@@ -650,128 +650,232 @@ function FeedMockup() {
   );
 }
 
-/* ── Step 3: Telegram alert mockup ──────────────────────────────── */
+/* ── Step 3: Telegram mockup (matches real Telegram Web UI) ─────── */
+/* Colors sourced from live Telegram Web component:                   */
+/*   bg: #000, bot bubble: #212121, user bubble: #766ac8             */
+/*   code: rgba(0,0,0,0.5) bg + #8774e1 text                        */
+/*   today label: rgba(72,87,97,0.4)                                 */
+/*   timestamp bot: rgba(104,108,114,0.75), user: rgba(255,255,255,0.533) */
+
+function TgBotMsg({ children, ts = "02:10 PM" }: { children: React.ReactNode; ts?: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "flex-end", marginBottom: "4px" }}>
+      <div
+        style={{
+          background: "#212121",
+          maxWidth: "300px",
+          borderRadius: "15px 15px 15px 0px",
+          padding: "5px 8px 6px",
+          boxShadow: "rgba(16,16,16,0.61) 0px 1px 2px 0px",
+          position: "relative",
+        }}
+      >
+        <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>{children}</div>
+        <span
+          style={{
+            color: "rgba(104,108,114,0.75)",
+            fontSize: "12px",
+            float: "right",
+            marginLeft: "7px",
+            lineHeight: "1.35",
+            marginTop: "2px",
+          }}
+        >
+          {ts}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function TgUserMsg({ children, ts = "02:10 PM" }: { children: React.ReactNode; ts?: string }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "4px" }}>
+      <div
+        style={{
+          background: "#766ac8",
+          maxWidth: "300px",
+          borderRadius: "15px 15px 0px 15px",
+          padding: "5px 8px 6px",
+          boxShadow: "rgba(16,16,16,0.61) 0px 1px 2px 0px",
+        }}
+      >
+        <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>{children}</div>
+        <span
+          style={{
+            color: "rgba(255,255,255,0.533)",
+            fontSize: "12px",
+            float: "right",
+            marginLeft: "7px",
+            lineHeight: "1.35",
+            marginTop: "2px",
+          }}
+        >
+          {ts}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function TelegramMockup({ visible }: { visible: boolean }) {
   return (
     <div
       style={{
-        background: "#17212B",
+        background: "#000",
         borderRadius: "14px",
-        border: "1px solid rgba(0,0,0,0.08)",
         overflow: "hidden",
-        maxWidth: "320px",
+        maxWidth: "360px",
         width: "100%",
+        fontFamily: "Roboto, -apple-system, BlinkMacSystemFont, sans-serif",
       }}
     >
       {/* Header */}
       <div
         style={{
+          background: "#212121",
+          padding: "10px 14px",
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          padding: "12px 14px",
           borderBottom: "1px solid rgba(255,255,255,0.06)",
-          background: "#232E3C",
         }}
       >
         <div
           style={{
-            width: 32,
-            height: 32,
+            width: 36,
+            height: 36,
             borderRadius: "50%",
             background: "linear-gradient(135deg,#FF9A8B,#DF849D)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            flexShrink: 0,
-            fontSize: "14px",
             color: "#fff",
             fontWeight: 800,
+            fontSize: 15,
+            flexShrink: 0,
           }}
         >
           K
         </div>
         <div>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "#fff", lineHeight: 1 }}>
-            AgentKBot
-          </div>
-          <div style={{ fontSize: "10px", color: "#6C8190", marginTop: "2px" }}>bot</div>
+          <div style={{ color: "#fff", fontSize: 14, fontWeight: 600, lineHeight: 1 }}>AgentKBot</div>
+          <div style={{ color: "rgba(104,108,114,0.75)", fontSize: 11, marginTop: 2 }}>bot</div>
         </div>
       </div>
 
-      {/* Messages */}
-      <div style={{ padding: "14px 12px", display: "flex", flexDirection: "column", gap: "6px", minHeight: "220px" }}>
-        <div style={{ textAlign: "center", marginBottom: "6px" }}>
+      {/* Chat area */}
+      <div style={{ padding: "8px 14px 14px", display: "flex", flexDirection: "column" }}>
+        {/* Today */}
+        <div style={{ textAlign: "center", margin: "4px 0 8px" }}>
           <span
             style={{
-              fontSize: "10px",
-              color: "#6C8190",
-              background: "rgba(255,255,255,0.05)",
+              background: "rgba(72,87,97,0.4)",
+              color: "#fff",
+              fontSize: 12,
+              fontWeight: 500,
               padding: "3px 10px",
-              borderRadius: "8px",
+              borderRadius: 15,
+              lineHeight: "1.3125",
             }}
           >
             Today
           </span>
         </div>
 
-        {/* Alert bubble */}
+        {/* Bot: welcome */}
+        <TgBotMsg>
+          👋 Welcome to <strong style={{ fontWeight: 500 }}>Agentk</strong>!
+          <br /><br />
+          Enter your Agentk Token to connect your alerts:
+        </TgBotMsg>
+
+        {/* User: token */}
+        <TgUserMsg>4SX8PEMSPUAS</TgUserMsg>
+
+        {/* Bot: connected */}
+        <TgBotMsg>
+          ✅ <strong style={{ fontWeight: 500 }}>Connected!</strong> You&apos;ll receive Reddit alerts here whenever new posts match your keywords.
+        </TgBotMsg>
+
+        {/* Bot: alert (animated in on scroll) */}
         <div
           style={{
-            alignSelf: "flex-start",
-            maxWidth: "88%",
-            background: "#232E3C",
-            borderRadius: "12px",
-            borderBottomLeftRadius: "3px",
-            padding: "10px 12px",
+            display: "flex",
+            alignItems: "flex-end",
+            marginBottom: "4px",
             opacity: visible ? 1 : 0,
-            transform: visible ? "translateY(0) scale(1)" : "translateY(10px) scale(0.96)",
-            transition: "opacity 0.5s ease, transform 0.5s ease",
+            transform: visible ? "translateY(0)" : "translateY(14px)",
+            transition: "opacity 0.5s ease 0.15s, transform 0.5s ease 0.15s",
           }}
         >
-          <p style={{ fontSize: "12px", fontWeight: 700, color: "#fff", lineHeight: "1.4", marginBottom: "8px" }}>
-            🔥 3 months in, still at 0 users. Starting to think I&apos;m doing something fundamentally wrong.
-          </p>
-          <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginBottom: "9px" }}>
-            <span style={{ fontSize: "11px", color: "#aab8c2" }}>
-              🔑 Keyword:{" "}
-              <code
+          <div style={{ display: "flex", flexDirection: "column", maxWidth: "300px" }}>
+            {/* Alert message — rounded-br-6 because button follows */}
+            <div
+              style={{
+                background: "#212121",
+                borderRadius: "15px 15px 6px 6px",
+                padding: "5px 8px 6px",
+                boxShadow: "rgba(16,16,16,0.61) 0px 1px 2px 0px",
+              }}
+            >
+              <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>
+                🔥 <strong style={{ fontWeight: 500 }}>3 months in, still at 0 users. Is this normal?</strong>
+                <br /><br />
+                🔑 Keyword:{" "}
+                <code
+                  style={{
+                    background: "rgba(0,0,0,0.5)",
+                    color: "#8774e1",
+                    fontFamily: "'Cascadia Mono','Roboto Mono',monospace",
+                    fontSize: "14px",
+                    padding: "1px 2px",
+                    borderRadius: "4px",
+                  }}
+                >
+                  saas
+                </code>
+                <br />
+                📌 r/startups<br />
+                ⬆️ 847 upvotes · 💬 124 comments<br />
+                👤 u/john_founder · 2.3k karma
+              </div>
+              <span
                 style={{
-                  background: "rgba(255,255,255,0.07)",
-                  borderRadius: "3px",
-                  padding: "1px 5px",
-                  fontSize: "11px",
-                  color: "#e8d5a3",
+                  color: "rgba(104,108,114,0.75)",
+                  fontSize: "12px",
+                  float: "right",
+                  marginLeft: "7px",
+                  lineHeight: "1.35",
+                  marginTop: "2px",
                 }}
               >
-                saas
-              </code>
-            </span>
-            <span style={{ fontSize: "11px", color: "#aab8c2" }}>📌 r/startups</span>
-            <span style={{ fontSize: "11px", color: "#aab8c2" }}>⬆️ 847 upvotes · 💬 124 comments</span>
-            <span style={{ fontSize: "11px", color: "#aab8c2" }}>👤 u/john_founder · 2.3k karma</span>
-          </div>
-          <div
-            style={{
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "7px",
-              padding: "7px 12px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "5px",
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#5AABFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-            </svg>
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "#5AABFF" }}>Go to post</span>
-          </div>
-          <div style={{ textAlign: "right", marginTop: "6px" }}>
-            <span style={{ fontSize: "10px", color: "#6C8190" }}>just now ✓✓</span>
+                02:20 PM
+              </span>
+            </div>
+
+            {/* Go to post inline keyboard button */}
+            <button
+              style={{
+                background: "rgba(72,87,97,0.4)",
+                border: "none",
+                color: "#fff",
+                fontSize: "14px",
+                fontWeight: 500,
+                height: "36px",
+                borderRadius: "6px 6px 15px 15px",
+                cursor: "default",
+                marginTop: "1px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "4px",
+                width: "100%",
+                fontFamily: "inherit",
+              }}
+            >
+              🔗 Go to post
+            </button>
           </div>
         </div>
       </div>
