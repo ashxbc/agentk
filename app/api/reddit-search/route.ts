@@ -4,42 +4,60 @@ export const runtime = "edge";
 
 const EMPTY = { data: { children: [] } };
 
+let cachedToken: string | null = null;
+let tokenExpiresAt = 0;
+
+async function getToken(): Promise<string | null> {
+  if (cachedToken && Date.now() < tokenExpiresAt) return cachedToken;
+
+  const id = process.env.REDDIT_CLIENT_ID;
+  const secret = process.env.REDDIT_CLIENT_SECRET;
+  if (!id || !secret) return null;
+
+  try {
+    const res = await fetch("https://www.reddit.com/api/v1/access_token", {
+      method: "POST",
+      headers: {
+        "Authorization": `Basic ${btoa(`${id}:${secret}`)}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "agentk/1.0",
+      },
+      body: "grant_type=client_credentials",
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    cachedToken = json.access_token;
+    tokenExpiresAt = Date.now() + (json.expires_in - 60) * 1000;
+    return cachedToken;
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get("q") ?? "";
   if (!q) return NextResponse.json(EMPTY);
 
-  const urls = [
-    `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`,
-    `https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(q)}&limit=6`,
-  ];
+  const token = await getToken();
+  if (!token) return NextResponse.json(EMPTY);
 
-  const log: string[] = [];
-
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, {
+  try {
+    const res = await fetch(
+      `https://oauth.reddit.com/api/subreddit_autocomplete_v2?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`,
+      {
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-          "Accept": "application/json, text/plain, */*",
-          "Accept-Language": "en-US,en;q=0.9",
-          "Cache-Control": "no-cache",
+          "Authorization": `Bearer ${token}`,
+          "User-Agent": "agentk/1.0",
         },
-        redirect: "follow",
-        cache: "no-store",
-      });
-      log.push(`${url.slice(0, 60)} → status:${res.status}`);
-      if (!res.ok) continue;
-      const text = await res.text();
-      log.push(`body_start:${text.slice(0, 80)}`);
-      if (!text.startsWith("{")) continue;
-      const json = JSON.parse(text);
-      const children = json?.data?.children ?? [];
-      if (children.length > 0) return NextResponse.json(json);
-    } catch (e: any) {
-      log.push(`error:${e?.message}`);
-      continue;
+      }
+    );
+    if (!res.ok) {
+      cachedToken = null;
+      return NextResponse.json(EMPTY);
     }
+    const json = await res.json();
+    return NextResponse.json(json);
+  } catch {
+    return NextResponse.json(EMPTY);
   }
-
-  return NextResponse.json({ ...EMPTY, _debug: log });
 }
