@@ -23,7 +23,7 @@ export default function Hero() {
 
         <div className="flex items-center gap-2 text-sm font-medium text-tertiary">
           <span className="text-primary-container font-bold">Completely free.</span>{" "}
-          No credit card, no catch.
+          No credit card.
         </div>
       </div>
     </section>
