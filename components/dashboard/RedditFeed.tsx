@@ -300,8 +300,7 @@ function SubredditInput({
         setSuggestions(
           (json?.data?.children ?? []).map((c: any) => c.data.display_name),
         );
-      } catch (e) {
-        console.error("[subreddit-ac] error:", e);
+      } catch {
         setSuggestions([]);
       }
     }, 300);

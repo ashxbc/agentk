@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = "edge";
+
 const EMPTY = { data: { children: [] } };
 
 export async function GET(req: NextRequest) {
