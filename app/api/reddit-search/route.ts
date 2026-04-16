@@ -13,6 +13,8 @@ export async function GET(req: NextRequest) {
     `https://www.reddit.com/subreddits/search.json?q=${encodeURIComponent(q)}&limit=6`,
   ];
 
+  const log: string[] = [];
+
   for (const url of urls) {
     try {
       const res = await fetch(url, {
@@ -25,16 +27,19 @@ export async function GET(req: NextRequest) {
         redirect: "follow",
         cache: "no-store",
       });
+      log.push(`${url.slice(0, 60)} → status:${res.status}`);
       if (!res.ok) continue;
       const text = await res.text();
-      if (!text.startsWith("{")) continue; // got HTML, skip
+      log.push(`body_start:${text.slice(0, 80)}`);
+      if (!text.startsWith("{")) continue;
       const json = JSON.parse(text);
       const children = json?.data?.children ?? [];
       if (children.length > 0) return NextResponse.json(json);
-    } catch {
+    } catch (e: any) {
+      log.push(`error:${e?.message}`);
       continue;
     }
   }
 
-  return NextResponse.json(EMPTY);
+  return NextResponse.json({ ...EMPTY, _debug: log });
 }
