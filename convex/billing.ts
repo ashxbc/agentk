@@ -30,22 +30,6 @@ export const getUserPlan = query({
   },
 });
 
-/**
- * Returns the authenticated user's most recent subscription, or null.
- */
-export const getSubscription = query({
-  args: {},
-  handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx);
-    if (!userId) return null;
-
-    return await ctx.db
-      .query("subscriptions")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .order("desc")
-      .first();
-  },
-});
 
 /**
  * Returns the authenticated user's last 50 payments, newest first.
@@ -97,27 +81,6 @@ export const findUserByEmail = internalQuery({
   },
 });
 
-/**
- * Fetches a payment and verifies it belongs to the given user.
- * Used by the invoice redirect route.
- */
-export const getPaymentForUser = internalQuery({
-  args: {
-    dodoPaymentId: v.string(),
-    userId:        v.id("users"),
-  },
-  handler: async (ctx, { dodoPaymentId, userId }) => {
-    const payment = await ctx.db
-      .query("payments")
-      .withIndex("by_dodo_payment", (q) =>
-        q.eq("dodoPaymentId", dodoPaymentId)
-      )
-      .unique();
-
-    if (!payment || payment.userId !== userId) return null;
-    return payment;
-  },
-});
 
 // ── Internal mutations (called only from webhookDodo.ts) ───────
 

@@ -519,26 +519,9 @@ function Stepper({
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function RedditFeed({ posts, loading, onReload }: Props) {
-  const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
+  const { isAuthenticated } = useConvexAuth();
   const settings = useQuery(api.userSettings.getUserSettings);
   const upsertSettings = useMutation(api.userSettings.upsertUserSettings);
-
-  useEffect(() => {
-    console.log(
-      "[RedditFeed] authLoading:",
-      authLoading,
-      "isAuthenticated:",
-      isAuthenticated,
-    );
-  }, [authLoading, isAuthenticated]);
-
-  useEffect(() => {
-    console.log("[RedditFeed] settings:", settings);
-  }, [settings]);
-
-  useEffect(() => {
-    console.log("[RedditFeed] posts received:", posts.length, posts);
-  }, [posts]);
 
   // Local copies of settings for modals
   const [keywords, setKeywords] = useState<string[]>([]);

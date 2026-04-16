@@ -29,13 +29,11 @@ export default function DashboardPage() {
 
 
   async function reload() {
-    console.log("[reload] triggered, isAuthenticated:", isAuthenticated);
     setLoading(true);
     try {
-      const result = await triggerFetch({});
-      console.log("[reload] triggerFetch result:", result);
-    } catch (e) {
-      console.error("[reload] error:", e);
+      await triggerFetch({});
+    } catch {
+      // silent — feed stays as-is if fetch fails
     } finally {
       setLoading(false);
     }
