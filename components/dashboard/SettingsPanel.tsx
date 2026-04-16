@@ -167,7 +167,7 @@ export default function SettingsPanel({ open }: Props) {
             </div>
           ) : (
             <div key={i} style={{ display: "flex", alignItems: "flex-end", gap: "7px", alignSelf: "flex-end", maxWidth: "72%" }}>
-              <div style={{ borderRadius: "16px", borderBottomRightRadius: "3px", padding: "8px 12px", fontSize: "12px", lineHeight: "1.6", background: "linear-gradient(135deg,#FF9A8B,#DF849D)", color: "#fff", fontWeight: 600, wordBreak: "break-word" }}>
+              <div style={{ borderRadius: "16px", borderBottomRightRadius: "3px", padding: "8px 12px", fontSize: "12px", lineHeight: "1.6", background: "#DF849D", color: "#fff", fontWeight: 600, wordBreak: "break-word" }}>
                 {m.text}
               </div>
               <div style={{ width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0, background: "#DF849D", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 800 }}>
