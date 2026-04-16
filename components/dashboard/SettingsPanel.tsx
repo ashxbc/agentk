@@ -170,7 +170,7 @@ export default function SettingsPanel({ open }: Props) {
               <div style={{ borderRadius: "16px", borderBottomRightRadius: "3px", padding: "8px 12px", fontSize: "12px", lineHeight: "1.6", background: "#DF849D", color: "#fff", fontWeight: 600, wordBreak: "break-word" }}>
                 {m.text}
               </div>
-              <div style={{ width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0, background: "#DF849D", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", fontWeight: 800 }}>
+              <div style={{ width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0, background: "#DF849D", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 700, userSelect: "none" }}>
                 {initial}
               </div>
             </div>
@@ -220,7 +220,7 @@ export default function SettingsPanel({ open }: Props) {
           spellCheck={false}
         />
 
-        <button onClick={handleSend} style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", flexShrink: 0, background: "linear-gradient(135deg,#FF9A8B,#DF849D)", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <button onClick={handleSend} style={{ width: "34px", height: "34px", borderRadius: "50%", border: "none", flexShrink: 0, background: "#DF849D", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
