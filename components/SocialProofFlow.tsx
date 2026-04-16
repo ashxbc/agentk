@@ -650,95 +650,32 @@ function FeedMockup() {
   );
 }
 
-/* ── Step 3: Telegram mockup (matches real Telegram Web UI) ─────── */
-/* Colors sourced from live Telegram Web component:                   */
-/*   bg: #000, bot bubble: #212121, user bubble: #766ac8             */
-/*   code: rgba(0,0,0,0.5) bg + #8774e1 text                        */
-/*   today label: rgba(72,87,97,0.4)                                 */
-/*   timestamp bot: rgba(104,108,114,0.75), user: rgba(255,255,255,0.533) */
-
-function TgBotMsg({ children, ts = "02:10 PM" }: { children: React.ReactNode; ts?: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "flex-end", marginBottom: "4px" }}>
-      <div
-        style={{
-          background: "#212121",
-          maxWidth: "300px",
-          borderRadius: "15px 15px 15px 0px",
-          padding: "5px 8px 6px",
-          boxShadow: "rgba(16,16,16,0.61) 0px 1px 2px 0px",
-          position: "relative",
-        }}
-      >
-        <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>{children}</div>
-        <span
-          style={{
-            color: "rgba(104,108,114,0.75)",
-            fontSize: "12px",
-            float: "right",
-            marginLeft: "7px",
-            lineHeight: "1.35",
-            marginTop: "2px",
-          }}
-        >
-          {ts}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function TgUserMsg({ children, ts = "02:10 PM" }: { children: React.ReactNode; ts?: string }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "4px" }}>
-      <div
-        style={{
-          background: "#766ac8",
-          maxWidth: "300px",
-          borderRadius: "15px 15px 0px 15px",
-          padding: "5px 8px 6px",
-          boxShadow: "rgba(16,16,16,0.61) 0px 1px 2px 0px",
-        }}
-      >
-        <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>{children}</div>
-        <span
-          style={{
-            color: "rgba(255,255,255,0.533)",
-            fontSize: "12px",
-            float: "right",
-            marginLeft: "7px",
-            lineHeight: "1.35",
-            marginTop: "2px",
-          }}
-        >
-          {ts}
-        </span>
-      </div>
-    </div>
-  );
-}
+/* ── Step 3: Telegram mockup — light mode ───────────────────────── */
+/* Light theme: #efede8 chat bg, #fff bot bubbles, #766ac8 user,    */
+/* #eae6f8 code bg, today label rgba(112,117,121,0.4)               */
 
 function TelegramMockup({ visible }: { visible: boolean }) {
   return (
     <div
       style={{
-        background: "#000",
+        background: "#efede8",
         borderRadius: "14px",
         overflow: "hidden",
         maxWidth: "360px",
         width: "100%",
         fontFamily: "Roboto, -apple-system, BlinkMacSystemFont, sans-serif",
+        border: "1px solid rgba(0,0,0,0.07)",
       }}
     >
       {/* Header */}
       <div
         style={{
-          background: "#212121",
+          background: "#fff",
           padding: "10px 14px",
           display: "flex",
           alignItems: "center",
           gap: "10px",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          borderBottom: "1px solid rgba(0,0,0,0.08)",
         }}
       >
         <div
@@ -759,8 +696,8 @@ function TelegramMockup({ visible }: { visible: boolean }) {
           K
         </div>
         <div>
-          <div style={{ color: "#fff", fontSize: 14, fontWeight: 600, lineHeight: 1 }}>AgentKBot</div>
-          <div style={{ color: "rgba(104,108,114,0.75)", fontSize: 11, marginTop: 2 }}>bot</div>
+          <div style={{ color: "#1a1a1a", fontSize: 14, fontWeight: 600, lineHeight: 1 }}>AgentKBot</div>
+          <div style={{ color: "rgba(112,117,121,0.8)", fontSize: 11, marginTop: 2 }}>bot</div>
         </div>
       </div>
 
@@ -770,8 +707,8 @@ function TelegramMockup({ visible }: { visible: boolean }) {
         <div style={{ textAlign: "center", margin: "4px 0 8px" }}>
           <span
             style={{
-              background: "rgba(72,87,97,0.4)",
-              color: "#fff",
+              background: "rgba(112,117,121,0.25)",
+              color: "#3e4145",
               fontSize: 12,
               fontWeight: 500,
               padding: "3px 10px",
@@ -795,26 +732,26 @@ function TelegramMockup({ visible }: { visible: boolean }) {
           }}
         >
           <div style={{ display: "flex", flexDirection: "column", maxWidth: "300px" }}>
-            {/* Alert message — rounded-br-6 because button follows */}
+            {/* Alert message bubble */}
             <div
               style={{
-                background: "#212121",
+                background: "#fff",
                 borderRadius: "15px 15px 6px 6px",
                 padding: "5px 8px 6px",
-                boxShadow: "rgba(16,16,16,0.61) 0px 1px 2px 0px",
+                boxShadow: "rgba(0,0,0,0.08) 0px 1px 2px 0px",
               }}
             >
-              <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>
+              <div style={{ color: "#1a1a1a", fontSize: "15px", lineHeight: "1.3125" }}>
                 🔥 <strong style={{ fontWeight: 500 }}>3 months in, still at 0 users. Is this normal?</strong>
                 <br /><br />
                 🔑 Keyword:{" "}
                 <code
                   style={{
-                    background: "rgba(0,0,0,0.5)",
-                    color: "#8774e1",
+                    background: "#eae6f8",
+                    color: "#6c5fc7",
                     fontFamily: "'Cascadia Mono','Roboto Mono',monospace",
                     fontSize: "14px",
-                    padding: "1px 2px",
+                    padding: "1px 4px",
                     borderRadius: "4px",
                   }}
                 >
@@ -827,7 +764,7 @@ function TelegramMockup({ visible }: { visible: boolean }) {
               </div>
               <span
                 style={{
-                  color: "rgba(104,108,114,0.75)",
+                  color: "rgba(112,117,121,0.75)",
                   fontSize: "12px",
                   float: "right",
                   marginLeft: "7px",
@@ -842,9 +779,9 @@ function TelegramMockup({ visible }: { visible: boolean }) {
             {/* Go to post inline keyboard button */}
             <button
               style={{
-                background: "rgba(72,87,97,0.4)",
+                background: "rgba(112,117,121,0.15)",
                 border: "none",
-                color: "#fff",
+                color: "#3e4145",
                 fontSize: "14px",
                 fontWeight: 500,
                 height: "36px",
