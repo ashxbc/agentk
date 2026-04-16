@@ -1,102 +1,55 @@
 import Image from "next/image";
 import logo from "@/app/logo.png";
 
-
 export default function Footer() {
-  const year = new Date().getFullYear();
-
   return (
-    <footer style={{ borderTop: "1px solid #edeff1" }}>
+    <footer style={{ borderTop: "1px solid #edeff1", backgroundColor: "#FDF7EF" }}>
+      <div className="w-full max-w-2xl mx-auto px-6 py-16 flex flex-col items-center text-center gap-6">
 
-      {/* Main footer body */}
-      <div className="w-full max-w-6xl mx-auto px-6 py-16">
-        <div className="flex flex-col md:flex-row justify-between gap-12 md:gap-8">
+        {/* Logo + name */}
+        <a href="#" className="flex items-center gap-2">
+          <Image src={logo} alt="AgentK" height={28} />
+          <span
+            className="text-lg font-extrabold tracking-tight"
+            style={{
+              background: "linear-gradient(135deg, #ff9472 0%, #f2709c 100%)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              backgroundClip: "text",
+            }}
+          >
+            agentK
+          </span>
+        </a>
 
-          {/* Brand */}
-          <div className="md:max-w-xs">
-            <a href="#" className="flex items-center gap-2 mb-4">
-              <Image src={logo} alt="AgentK" height={28} />
-              <span
-                className="text-lg font-extrabold tracking-tight"
-                style={{
-                  background: "linear-gradient(135deg, #ff9472 0%, #f2709c 100%)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  backgroundClip: "text",
-                }}
-              >
-                agentK
-              </span>
+        {/* Description */}
+        <p className="text-sm leading-relaxed max-w-xs" style={{ color: "#B2A28C" }}>
+          Monitors Reddit 24/7 and alerts you on Telegram the moment your keywords appear.
+        </p>
+
+        {/* Links */}
+        <div className="flex items-center gap-6">
+          {[
+            { label: "Privacy Policy", href: "#" },
+            { label: "Terms of Service", href: "#" },
+          ].map(({ label, href }) => (
+            <a
+              key={label}
+              href={href}
+              className="text-xs transition-colors hover:text-on-surface"
+              style={{ color: "#B2A28C" }}
+            >
+              {label}
             </a>
-            <p className="text-sm leading-relaxed mb-6" style={{ color: "#5f5e5e" }}>
-              An AI growth agent that finds people already searching for your solution — and helps you reply before anyone else does.
-            </p>
-          </div>
-
-          {/* Links */}
-          <div className="flex flex-row gap-16 md:gap-20">
-
-            <div>
-              <p className="text-[11px] font-bold tracking-[0.18em] uppercase mb-4" style={{ color: "#c0bfbf" }}>Product</p>
-              <ul className="space-y-3">
-                {[
-                  { label: "Pricing", href: "#pricing" },
-                  { label: "FAQ", href: "#faq" },
-                  { label: "Chrome Extension", href: "#" },
-                  { label: "Changelog", href: "#" },
-                ].map(({ label, href }) => (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      className="text-sm transition-colors duration-200 hover:text-on-surface"
-                      style={{ color: "#5f5e5e" }}
-                    >
-                      {label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-[11px] font-bold tracking-[0.18em] uppercase mb-4" style={{ color: "#c0bfbf" }}>Company</p>
-              <ul className="space-y-3">
-                {[
-                  { label: "About", href: "#" },
-                  { label: "Blog", href: "#" },
-                  { label: "Privacy Policy", href: "#" },
-                  { label: "Terms of Service", href: "#" },
-                ].map(({ label, href }) => (
-                  <li key={label}>
-                    <a
-                      href={href}
-                      className="text-sm transition-colors duration-200 hover:text-on-surface"
-                      style={{ color: "#5f5e5e" }}
-                    >
-                      {label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-          </div>
-
+          ))}
         </div>
-      </div>
 
-      {/* Bottom bar */}
-      <div style={{ borderTop: "1px solid #edeff1" }}>
-        <div className="w-full max-w-6xl mx-auto px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-xs" style={{ color: "#b0b0b0" }}>
-            © {year} AgentK. All rights reserved.
-          </p>
-          <p className="text-xs" style={{ color: "#c8c8c8" }}>
-            Built for founders who'd rather reply than run ads.
-          </p>
-        </div>
-      </div>
+        {/* Copyright */}
+        <p className="text-xs" style={{ color: "#C8C4BE" }}>
+          © {new Date().getFullYear()} AgentK. All rights reserved.
+        </p>
 
+      </div>
     </footer>
   );
 }
