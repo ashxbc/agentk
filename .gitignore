@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+
+# next.js build output
+.next/
+
+# env files — never commit secrets
+.env.local
+.env*.local
+
+# debug output
+reddit_results/
+
+# typescript build info
+*.tsbuildinfo
+
+# vercel
+.vercel
+
+# os
+.DS_Store
+Thumbs.db
+
+# claude agent internals
+.agents/
