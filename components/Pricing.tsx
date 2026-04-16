@@ -13,13 +13,7 @@ export default function Pricing() {
           pricing
         </h2>
 
-        <div className="mt-16 mb-6 inline-flex items-center justify-center gap-3 px-6 py-2.5 rounded-full border"
-          style={{ borderColor: "rgba(223,132,157,0.3)", background: "rgba(223,132,157,0.05)" }}>
-          <span className="w-2 h-2 rounded-full bg-[#DF849D] animate-pulse inline-block" />
-          <span className="text-sm font-semibold" style={{ color: "#DF849D" }}>Always free</span>
-        </div>
-
-        <div className="mt-4 mb-8">
+        <div className="mt-16 mb-8">
           <span className="text-8xl md:text-9xl font-extrabold tracking-tighter" style={{ color: "#191918" }}>$0</span>
         </div>
 
