@@ -735,20 +735,20 @@ function TelegramMockup({ visible }: { visible: boolean }) {
             {/* Alert message bubble */}
             <div
               style={{
-                background: "linear-gradient(135deg, #FF9A8B 0%, #DF849D 100%)",
+                background: "#fff",
                 borderRadius: "15px 15px 6px 6px",
                 padding: "5px 8px 6px",
-                border: "none",
+                border: "1px solid rgba(0,0,0,0.1)",
               }}
             >
-              <div style={{ color: "#fff", fontSize: "15px", lineHeight: "1.3125" }}>
+              <div style={{ color: "#1a1a1a", fontSize: "15px", lineHeight: "1.3125" }}>
                 🔥 <strong style={{ fontWeight: 500 }}>3 months in, still at 0 users. Is this normal?</strong>
                 <br /><br />
                 🔑 Keyword:{" "}
                 <code
                   style={{
-                    background: "rgba(255,255,255,0.25)",
-                    color: "#fff",
+                    background: "#eae6f8",
+                    color: "#6c5fc7",
                     fontFamily: "'Cascadia Mono','Roboto Mono',monospace",
                     fontSize: "14px",
                     padding: "1px 4px",
@@ -764,7 +764,7 @@ function TelegramMockup({ visible }: { visible: boolean }) {
               </div>
               <span
                 style={{
-                  color: "rgba(255,255,255,0.7)",
+                  color: "rgba(112,117,121,0.75)",
                   fontSize: "12px",
                   float: "right",
                   marginLeft: "7px",
@@ -779,9 +779,9 @@ function TelegramMockup({ visible }: { visible: boolean }) {
             {/* Go to post inline keyboard button */}
             <button
               style={{
-                background: "linear-gradient(135deg, #FF9A8B 0%, #DF849D 100%)",
-                border: "none",
-                color: "#fff",
+                background: "#fff",
+                border: "1px solid rgba(0,0,0,0.1)",
+                color: "#3e4145",
                 fontSize: "14px",
                 fontWeight: 500,
                 height: "36px",
