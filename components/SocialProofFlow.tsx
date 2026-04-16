@@ -877,9 +877,24 @@ export default function SocialProofFlow() {
             No need to check the dashboard. The moment a new matching post goes live, AgentK fires a Telegram message. One tap to open the post and join the conversation.
           </p>
         </div>
-        <div className="w-full md:w-[62%] flex justify-center">
-          <div className="-rotate-1">
-            <TelegramMockup visible={tgVisible} />
+        <div className="w-full md:w-[62%]">
+          <div
+            style={{
+              position: "relative",
+              width: "100%",
+              height: "340px",
+              background: "#FDF7EF",
+              borderRadius: "14px",
+              border: "1px solid rgba(0,0,0,0.08)",
+              overflow: "hidden",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <div style={{ transform: "rotate(-1deg)" }}>
+              <TelegramMockup visible={tgVisible} />
+            </div>
           </div>
         </div>
       </div>
