@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { POPULAR_SUBREDDITS } from "@/lib/popular-subreddits";
 
 interface Post {
   _id: string;
@@ -285,25 +286,14 @@ function SubredditInput({
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
-  const debRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    if (debRef.current) clearTimeout(debRef.current);
-    if (value.length < 2) {
-      setSuggestions([]);
-      return;
-    }
-    debRef.current = setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/reddit-search?q=${encodeURIComponent(value)}`);
-        const json = await res.json();
-        setSuggestions(
-          (json?.data?.children ?? []).map((c: any) => c.data.display_name),
-        );
-      } catch {
-        setSuggestions([]);
-      }
-    }, 300);
+    if (value.length < 2) { setSuggestions([]); return; }
+    const q = value.toLowerCase();
+    const matches = POPULAR_SUBREDDITS
+      .filter((s) => s.toLowerCase().startsWith(q))
+      .slice(0, 6);
+    setSuggestions(matches.length > 0 ? matches : POPULAR_SUBREDDITS.filter((s) => s.toLowerCase().includes(q)).slice(0, 6));
   }, [value]);
 
   const getRect = () => containerRef.current?.getBoundingClientRect() ?? null;
