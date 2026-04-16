@@ -213,7 +213,7 @@ export const setFetchLoopId = internalMutation({
   },
 });
 
-// ── doFetchLoop — self-rescheduling per-user 2-minute cycle ───────────────────
+// ── doFetchLoop — self-rescheduling per-user 3-minute cycle ───────────────────
 
 export const doFetchLoop = internalAction({
   args: { userId: v.id("users") },
@@ -226,12 +226,16 @@ export const doFetchLoop = internalAction({
       return;
     }
 
+    // Random 0–5s stagger to spread Reddit requests across users
+    const jitterMs = Math.floor(Math.random() * 5000);
+    await new Promise((r) => setTimeout(r, jitterMs));
+
     // Run the fetch for this user
     await ctx.runAction(internal.reddit.doFetch, { userId });
 
-    // Reschedule self in 2 minutes and persist the new job ID
+    // Reschedule self in 3 minutes and persist the new job ID
     const nextId = await ctx.scheduler.runAfter(
-      2 * 60 * 1000,
+      3 * 60 * 1000,
       internal.reddit.doFetchLoop,
       { userId }
     );
