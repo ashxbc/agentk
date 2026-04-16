@@ -1,6 +1,7 @@
 import { internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 export const getUserSettings = query({
   args: {},
@@ -31,14 +32,36 @@ export const upsertUserSettings = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
 
+    const prevHasBoth = (existing?.keywords.length ?? 0) > 0 && (existing?.subreddits.length ?? 0) > 0;
+    const nowHasBoth  = args.keywords.length > 0 && args.subreddits.length > 0;
+
+    let fetchLoopId = existing?.fetchLoopId;
+
+    // Transition → active: both conditions met for the first time — start loop
+    if (!prevHasBoth && nowHasBoth) {
+      if (fetchLoopId) {
+        try { await ctx.scheduler.cancel(fetchLoopId); } catch {}
+      }
+      fetchLoopId = await ctx.scheduler.runAfter(0, internal.reddit.doFetchLoop, { userId });
+    }
+
+    // Transition → inactive: subreddits removed — stop loop immediately
+    if (prevHasBoth && !nowHasBoth) {
+      if (fetchLoopId) {
+        try { await ctx.scheduler.cancel(fetchLoopId); } catch {}
+      }
+      fetchLoopId = undefined;
+    }
+
+    // prevHasBoth && nowHasBoth: loop keeps running, don't touch fetchLoopId
+    // !prevHasBoth && !nowHasBoth: no loop exists, nothing to do
+
+    const patch = { ...args, fetchLoopId };
+
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args });
+      await ctx.db.patch(existing._id, patch);
     } else {
-      await ctx.db.insert("userSettings", {
-        userId,
-        ...args,
-        lastFetchAt: 0,
-      });
+      await ctx.db.insert("userSettings", { userId, ...patch, lastFetchAt: 0 });
     }
   },
 });

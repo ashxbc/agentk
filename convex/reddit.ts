@@ -200,6 +200,45 @@ export const searchSubreddits = action({
   },
 });
 
+// ── setFetchLoopId — called by doFetchLoop to persist next scheduled ID ──────
+
+export const setFetchLoopId = internalMutation({
+  args: { userId: v.id("users"), fetchLoopId: v.optional(v.id("_scheduled_functions")) },
+  handler: async (ctx, { userId, fetchLoopId }) => {
+    const settings = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (settings) await ctx.db.patch(settings._id, { fetchLoopId });
+  },
+});
+
+// ── doFetchLoop — self-rescheduling per-user 2-minute cycle ───────────────────
+
+export const doFetchLoop = internalAction({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
+
+    // Stop if no settings, no keywords, or no subreddits
+    if (!settings || settings.keywords.length === 0 || settings.subreddits.length === 0) {
+      await ctx.runMutation(internal.reddit.setFetchLoopId, { userId, fetchLoopId: undefined });
+      return;
+    }
+
+    // Run the fetch for this user
+    await ctx.runAction(internal.reddit.doFetch, { userId });
+
+    // Reschedule self in 2 minutes and persist the new job ID
+    const nextId = await ctx.scheduler.runAfter(
+      2 * 60 * 1000,
+      internal.reddit.doFetchLoop,
+      { userId }
+    );
+    await ctx.runMutation(internal.reddit.setFetchLoopId, { userId, fetchLoopId: nextId });
+  },
+});
+
 // ── triggerFetch — auth entry point ──────────────────────────────────────────
 
 export const triggerFetch = mutation({
@@ -240,41 +279,25 @@ export const doFetch = internalAction({
     const allPosts: any[] = [];
     const seen = new Set<string>();
 
-    if (subreddits.length > 0) {
-      for (const sub of subreddits) {
-        console.log("[doFetch] fetching r/" + sub);
-        const json = await fetchJSON(
-          `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`
-        );
-        if (!json) { console.warn("[doFetch] null response for r/" + sub); continue; }
-        const children = json.data?.children ?? [];
-        console.log("[doFetch] r/" + sub + " →", children.length, "posts");
-        for (const child of children) {
-          const p = child?.data;
-          if (!p?.id || seen.has(p.id)) continue;
-          seen.add(p.id);
-          allPosts.push(p);
-        }
-      }
-    } else if (keywords.length > 0) {
-      for (const keyword of keywords) {
-        console.log("[doFetch] searching:", keyword);
-        const json = await fetchJSON(
-          `https://www.reddit.com/search.json?q=${encodeURIComponent(keyword)}&sort=new&limit=100&type=link,self`
-        );
-        if (!json) { console.warn("[doFetch] null response for keyword:", keyword); continue; }
-        const children = json.data?.children ?? [];
-        console.log("[doFetch] keyword '" + keyword + "' →", children.length, "posts");
-        for (const child of children) {
-          const p = child?.data;
-          if (!p?.id || seen.has(p.id)) continue;
-          seen.add(p.id);
-          allPosts.push(p);
-        }
-      }
-    } else {
-      console.log("[doFetch] no subreddits or keywords — skipping");
+    if (subreddits.length === 0) {
+      console.log("[doFetch] no subreddits — skipping");
       return;
+    }
+
+    for (const sub of subreddits) {
+      console.log("[doFetch] fetching r/" + sub);
+      const json = await fetchJSON(
+        `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`
+      );
+      if (!json) { console.warn("[doFetch] null response for r/" + sub); continue; }
+      const children = json.data?.children ?? [];
+      console.log("[doFetch] r/" + sub + " →", children.length, "posts");
+      for (const child of children) {
+        const p = child?.data;
+        if (!p?.id || seen.has(p.id)) continue;
+        seen.add(p.id);
+        allPosts.push(p);
+      }
     }
 
     console.log("[doFetch] raw posts collected:", allPosts.length);

@@ -264,18 +264,3 @@ export const sendAlerts = internalAction({
   },
 });
 
-// ── fetchForConnectedUsers — runs on cron ─────────────────────────────────────
-
-export const fetchForConnectedUsers = internalAction({
-  args: {},
-  handler: async (ctx) => {
-    const connected = await ctx.runQuery(internal.agentTokens.getConnectedUsers);
-    for (const row of connected) {
-      const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, {
-        userId: row.userId,
-      });
-      if (!settings) continue;
-      await ctx.scheduler.runAfter(0, internal.reddit.doFetch, { userId: row.userId });
-    }
-  },
-});

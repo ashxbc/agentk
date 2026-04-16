@@ -23,13 +23,14 @@ export default defineSchema({
     .index("by_user_post", ["userId", "postId"]),
 
   userSettings: defineTable({
-    userId:      v.id("users"),
-    keywords:    v.array(v.string()),
-    excluded:    v.array(v.string()),
-    subreddits:  v.array(v.string()),
-    minUpvotes:  v.number(),
-    minComments: v.number(),
-    lastFetchAt: v.number(),
+    userId:       v.id("users"),
+    keywords:     v.array(v.string()),
+    excluded:     v.array(v.string()),
+    subreddits:   v.array(v.string()),
+    minUpvotes:   v.number(),
+    minComments:  v.number(),
+    lastFetchAt:  v.number(),
+    fetchLoopId:  v.optional(v.id("_scheduled_functions")),
   }).index("by_user", ["userId"]),
 
   // ── Billing ──────────────────────────────────────────────────

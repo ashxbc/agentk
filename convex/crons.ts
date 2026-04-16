@@ -9,10 +9,4 @@ crons.interval(
   internal.reddit.deleteExpiredResults
 );
 
-crons.interval(
-  "auto-fetch-for-telegram-users",
-  { minutes: 2 },
-  internal.telegram.fetchForConnectedUsers
-);
-
 export default crons;
