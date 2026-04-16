@@ -14,12 +14,10 @@ export default function Navbar() {
   const { isAuthenticated }           = useConvexAuth();
   const { signOut }                   = useAuthActions();
   const user    = useQuery(api.users.currentUser, isAuthenticated ? {} : "skip");
-  const billing = useQuery(api.billing.getUserPlan, isAuthenticated ? {} : "skip");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const email   = user?.email ?? "";
   const initial = email.charAt(0).toUpperCase();
-  const plan    = billing?.plan ?? "free";
 
   // Auto-open auth modal when ?openLogin=true is in the URL.
   useEffect(() => {
@@ -81,7 +79,6 @@ export default function Navbar() {
                   {/* Account info */}
                   <div className="px-4 py-3 border-b" style={{ borderColor: "rgba(0,0,0,0.06)" }}>
                     <p className="text-[12px] font-semibold text-[#191918] truncate">{email}</p>
-                    <p className="text-[11px] mt-0.5 capitalize" style={{ color: "#B2A28C" }}>{plan} plan</p>
                   </div>
 
                   {/* Dashboard */}
