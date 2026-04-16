@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { POPULAR_SUBREDDITS } from "@/lib/popular-subreddits";
 
@@ -286,14 +286,27 @@ function SubredditInput({
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const searchSubs = useAction(api.reddit.searchSubreddits);
 
   useEffect(() => {
     if (value.length < 2) { setSuggestions([]); return; }
+
+    // Show local matches instantly
     const q = value.toLowerCase();
-    const matches = POPULAR_SUBREDDITS
-      .filter((s) => s.toLowerCase().startsWith(q))
+    const local = POPULAR_SUBREDDITS.filter(s => s.toLowerCase().startsWith(q))
+      .concat(POPULAR_SUBREDDITS.filter(s => !s.toLowerCase().startsWith(q) && s.toLowerCase().includes(q)))
       .slice(0, 6);
-    setSuggestions(matches.length > 0 ? matches : POPULAR_SUBREDDITS.filter((s) => s.toLowerCase().includes(q)).slice(0, 6));
+    setSuggestions(local);
+
+    // Fetch live results from Convex (Convex IPs not blocked by Reddit)
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const results = await searchSubs({ query: value });
+        if (!cancelled && results.length > 0) setSuggestions(results);
+      } catch { /* keep local results */ }
+    }, 300);
+    return () => { cancelled = true; clearTimeout(timer); };
   }, [value]);
 
   const getRect = () => containerRef.current?.getBoundingClientRect() ?? null;
@@ -552,6 +565,9 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
   const offset = useRef(0);
   const karmaCache = useRef<Map<string, string>>(new Map());
   const tooltipRef = useRef<HTMLDivElement | null>(null);
+  const fetchKarmaAction = useAction(api.reddit.fetchKarma);
+  const fetchKarmaRef = useRef(fetchKarmaAction);
+  fetchKarmaRef.current = fetchKarmaAction;
 
   // Global karma tooltip div mounted on body
   useEffect(() => {
@@ -705,11 +721,8 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
             } else {
               show("...");
               try {
-                const res = await fetch(
-                  `/api/reddit-user?u=${encodeURIComponent(uname)}`,
-                );
-                const json = await res.json();
-                const kStr = formatCount(json.karma ?? 0) + " karma";
+                const karma = await fetchKarmaRef.current({ author: uname });
+                const kStr = formatCount(karma ?? 0) + " karma";
                 karmaCache.current.set(uname, kStr);
                 if (fireEl.matches(":hover")) show(kStr);
               } catch {

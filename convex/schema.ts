@@ -95,4 +95,10 @@ export default defineSchema({
     alertedAt: v.number(),
   }).index("by_user_post", ["userId", "postId"]),
 
+  karmaCache: defineTable({
+    author:    v.string(),
+    karma:     v.number(),
+    fetchedAt: v.number(),
+  }).index("by_author", ["author"]),
+
 });

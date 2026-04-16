@@ -1,4 +1,4 @@
-import { internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
@@ -144,6 +144,59 @@ export const upsertResults = internalMutation({
       }
     }
     return newIds;
+  },
+});
+
+// ── Karma cache ───────────────────────────────────────────────────────────────
+
+const FIVE_MIN_MS = 5 * 60 * 1000;
+
+export const getKarmaCached = internalQuery({
+  args: { author: v.string() },
+  handler: async (ctx, { author }) =>
+    ctx.db.query("karmaCache").withIndex("by_author", q => q.eq("author", author)).first(),
+});
+
+export const setKarmaCache = internalMutation({
+  args: { author: v.string(), karma: v.number() },
+  handler: async (ctx, { author, karma }) => {
+    const existing = await ctx.db.query("karmaCache").withIndex("by_author", q => q.eq("author", author)).first();
+    if (existing) await ctx.db.patch(existing._id, { karma, fetchedAt: Date.now() });
+    else await ctx.db.insert("karmaCache", { author, karma, fetchedAt: Date.now() });
+  },
+});
+
+export const fetchKarma = action({
+  args: { author: v.string() },
+  handler: async (ctx, { author }): Promise<number> => {
+    const cached = await ctx.runQuery(internal.reddit.getKarmaCached, { author });
+    if (cached && Date.now() - cached.fetchedAt < FIVE_MIN_MS) return cached.karma;
+    try {
+      const res = await fetch(
+        `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`,
+        { headers: { "User-Agent": "agentk/1.0 (web dashboard)" } }
+      );
+      if (!res.ok) return 0;
+      const json = await res.json();
+      const karma = (json?.data?.link_karma ?? 0) + (json?.data?.comment_karma ?? 0);
+      await ctx.runMutation(internal.reddit.setKarmaCache, { author, karma });
+      return karma;
+    } catch { return 0; }
+  },
+});
+
+export const searchSubreddits = action({
+  args: { query: v.string() },
+  handler: async (_ctx, { query }): Promise<string[]> => {
+    try {
+      const res = await fetch(
+        `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(query)}&limit=6&include_over_18=false&include_profiles=false`,
+        { headers: { "User-Agent": "agentk/1.0 (web dashboard)" } }
+      );
+      if (!res.ok) return [];
+      const json = await res.json();
+      return (json?.data?.children ?? []).map((c: any) => c.data.display_name as string);
+    } catch { return []; }
   },
 });
 
