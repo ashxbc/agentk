@@ -72,11 +72,12 @@ async function openDmChannel(token: string, userId: string): Promise<string | nu
   return data?.id ?? null;
 }
 
-async function sendDmMessage(token: string, channelId: string, content?: string, embeds?: object[]) {
+async function sendDmMessage(token: string, channelId: string, content?: string, embeds?: object[]): Promise<boolean> {
   const body: Record<string, unknown> = {};
   if (content) body.content = content;
   if (embeds)  body.embeds  = embeds;
-  await discordApi(token, `/channels/${channelId}/messages`, "POST", body);
+  const result = await discordApi(token, `/channels/${channelId}/messages`, "POST", body);
+  return result !== null;
 }
 
 function interaction(content: string, ephemeral = false) {
@@ -244,14 +245,13 @@ export const sendDiscordAlerts = internalAction({
     const channelId = agentToken.discordChannelId;
     const settings  = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
     const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
-    const thirtyMinAgoSec = Date.now() / 1000 - 1800;
 
     for (const postId of postIds) {
       const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "discord" });
       if (alerted) continue;
 
       const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
-      if (!post || post.createdUtc < thirtyMinAgoSec) continue;
+      if (!post) continue;
 
       const postText       = `${post.title ?? ""} ${post.body}`.toLowerCase();
       const matchedKeyword = keywords.find((k) => postText.includes(k)) ?? "—";
@@ -272,8 +272,10 @@ export const sendDiscordAlerts = internalAction({
         footer:    { text: "Agentk · Reddit Monitor" },
       };
 
-      await sendDmMessage(botToken, channelId, undefined, [embed]);
-      await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "discord" });
+      const sent = await sendDmMessage(botToken, channelId, undefined, [embed]);
+      if (sent) {
+        await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "discord" });
+      }
     }
   },
 });
