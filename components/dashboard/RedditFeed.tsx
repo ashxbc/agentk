@@ -714,7 +714,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
               show("...");
               try {
                 const karma = await fetchKarmaRef.current({ author: uname });
-                const kStr = formatCount(karma ?? 0) + " karma";
+                const kStr = karma != null ? formatCount(karma) + " karma" : "—";
                 karmaCache.current.set(uname, kStr);
                 if (fireEl.matches(":hover")) show(kStr);
               } catch {

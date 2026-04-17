@@ -168,7 +168,7 @@ export const setKarmaCache = internalMutation({
 
 export const fetchKarma = action({
   args: { author: v.string() },
-  handler: async (ctx, { author }): Promise<number> => {
+  handler: async (ctx, { author }): Promise<number | null> => {
     const cached = await ctx.runQuery(internal.reddit.getKarmaCached, { author });
     if (cached && Date.now() - cached.fetchedAt < FIVE_MIN_MS) return cached.karma;
     try {
@@ -176,12 +176,18 @@ export const fetchKarma = action({
         `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`,
         { headers: { "User-Agent": "agentk/1.0 (web dashboard)" } }
       );
-      if (!res.ok) return 0;
+      if (!res.ok) {
+        console.warn(`[fetchKarma] ${author}: HTTP ${res.status}`);
+        return null;
+      }
       const json = await res.json();
       const karma = (json?.data?.link_karma ?? 0) + (json?.data?.comment_karma ?? 0);
       await ctx.runMutation(internal.reddit.setKarmaCache, { author, karma });
       return karma;
-    } catch { return 0; }
+    } catch (e) {
+      console.warn(`[fetchKarma] ${author}: ${e}`);
+      return null;
+    }
   },
 });
 
