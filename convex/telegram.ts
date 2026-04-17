@@ -197,6 +197,21 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
   return new Response("ok", { status: 200 });
 });
 
+// ── notifyAccountDeleted — sent when account is deleted ──────────────────────
+
+export const notifyAccountDeleted = internalAction({
+  args: { chatId: v.string() },
+  handler: async (_ctx, { chatId }) => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return;
+    await tgSend(
+      botToken,
+      chatId,
+      "⚠️ *Your Agentk account has been deleted\\.*\n\nThis Telegram session has been reset\\.\n\nIf you have a new account, send your new Agentk token to reconnect:"
+    );
+  },
+});
+
 // ── sendAlerts — scheduled after each doFetch ─────────────────────────────────
 
 export const sendAlerts = internalAction({

@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 
 export const registerDevice = mutation({
   args: {
@@ -18,10 +19,23 @@ export const registerDevice = mutation({
       .first();
 
     if (conflict && conflict.userId !== userId) {
-      // Delete new account's auth data so they can't use the app
+      // Notify Telegram if the new account had a bot session
+      const agentToken = await ctx.db
+        .query("agentTokens")
+        .withIndex("by_user", (q) => q.eq("userId", userId))
+        .unique();
+      if (agentToken?.telegramChatId) {
+        await ctx.scheduler.runAfter(0, internal.telegram.notifyAccountDeleted, {
+          chatId: agentToken.telegramChatId,
+        });
+      }
+
+      // Delete new account's data
       for (const row of await ctx.db.query("authSessions").withIndex("userId", (q) => q.eq("userId", userId)).collect())
         await ctx.db.delete(row._id);
       for (const row of await ctx.db.query("authAccounts").withIndex("userIdAndProvider", (q) => q.eq("userId", userId)).collect())
+        await ctx.db.delete(row._id);
+      for (const row of await ctx.db.query("agentTokens").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
         await ctx.db.delete(row._id);
       await ctx.db.delete(userId);
       throw new Error("DEVICE_CONFLICT");

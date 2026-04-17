@@ -1,5 +1,6 @@
 import { internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
+import { internal } from "./_generated/api";
 import { v } from "convex/values";
 
 // Internal: fetch a user by ID (used by Telegram webhook for /account).
@@ -46,6 +47,17 @@ export const deleteAccount = mutation({
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
+
+    // Notify Telegram before deleting the token binding
+    const agentToken = await ctx.db
+      .query("agentTokens")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (agentToken?.telegramChatId) {
+      await ctx.scheduler.runAfter(0, internal.telegram.notifyAccountDeleted, {
+        chatId: agentToken.telegramChatId,
+      });
+    }
 
     // Delete all user data rows
     for (const row of await ctx.db.query("userSettings").withIndex("by_user", (q) => q.eq("userId", userId)).collect())
