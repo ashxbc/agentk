@@ -6,18 +6,50 @@ import { internal } from "./_generated/api";
 const SIX_HOURS_SEC  = 6 * 3600;
 const SIX_HOURS_MS   = SIX_HOURS_SEC * 1000;
 
+// ── Proxy helpers ─────────────────────────────────────────────────────────────
+
+function proxyBase(): string | undefined {
+  return process.env.REDDIT_PROXY_URL?.replace(/\/$/, "");
+}
+
+function proxyHeaders(): Record<string, string> {
+  const key = process.env.REDDIT_PROXY_SECRET;
+  return key ? { "X-Api-Key": key } : { "User-Agent": "agentk/1.0" };
+}
+
+function subredditUrl(sub: string): string {
+  const base = proxyBase();
+  return base
+    ? `${base}/r/${encodeURIComponent(sub)}/new`
+    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`;
+}
+
+function karmaUrl(author: string): string {
+  const base = proxyBase();
+  return base
+    ? `${base}/user/${encodeURIComponent(author)}/about`
+    : `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`;
+}
+
+function searchUrl(q: string): string {
+  const base = proxyBase();
+  return base
+    ? `${base}/search/subreddits?query=${encodeURIComponent(q)}`
+    : `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`;
+}
+
 // Fetch helper — retries up to 2 times on network/5xx errors, skips on 429
-async function fetchJSON(url: string): Promise<any | null> {
+async function fetchJSON(sub: string): Promise<any | null> {
+  const url     = subredditUrl(sub);
+  const headers = proxyHeaders();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, {
-        headers: { "User-Agent": "agentk/1.0 (web dashboard)" },
-      });
-      if (res.status === 429) return null;        // rate limited — skip silently
-      if (res.status >= 500 && attempt < 2) continue; // server error — retry
+      const res = await fetch(url, { headers });
+      if (res.status === 429) return null;
+      if (res.status >= 500 && attempt < 2) continue;
       if (!res.ok) return null;
       const json = await res.json();
-      if (!json?.data?.children) return null;     // malformed — skip
+      if (!json?.data?.children) return null;
       return json;
     } catch {
       if (attempt < 2) continue;
@@ -172,10 +204,7 @@ export const fetchKarma = action({
     const cached = await ctx.runQuery(internal.reddit.getKarmaCached, { author });
     if (cached && Date.now() - cached.fetchedAt < FIVE_MIN_MS) return cached.karma;
     try {
-      const res = await fetch(
-        `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`,
-        { headers: { "User-Agent": "agentk/1.0 (web dashboard)" } }
-      );
+      const res = await fetch(karmaUrl(author), { headers: proxyHeaders() });
       if (!res.ok) {
         console.warn(`[fetchKarma] ${author}: HTTP ${res.status}`);
         return null;
@@ -195,10 +224,7 @@ export const searchSubreddits = action({
   args: { query: v.string() },
   handler: async (_ctx, { query }): Promise<string[]> => {
     try {
-      const res = await fetch(
-        `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(query)}&limit=6&include_over_18=false&include_profiles=false`,
-        { headers: { "User-Agent": "agentk/1.0 (web dashboard)" } }
-      );
+      const res = await fetch(searchUrl(query), { headers: proxyHeaders() });
       if (!res.ok) return [];
       const json = await res.json();
       return (json?.data?.children ?? []).map((c: any) => c.data.display_name as string);
@@ -233,9 +259,7 @@ export const globalFetch = internalAction({
     // 3. Fetch each subreddit once with 2s delay between requests
     const postsBySub = new Map<string, any[]>();
     for (const sub of uniqueSubs) {
-      const json = await fetchJSON(
-        `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`
-      );
+      const json = await fetchJSON(sub);
       if (json) {
         postsBySub.set(sub, json.data?.children?.map((c: any) => c.data) ?? []);
       }
@@ -357,9 +381,7 @@ export const doFetch = internalAction({
 
     for (const sub of subreddits) {
       console.log("[doFetch] fetching r/" + sub);
-      const json = await fetchJSON(
-        `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`
-      );
+      const json = await fetchJSON(sub);
       if (!json) { console.warn("[doFetch] null response for r/" + sub); continue; }
       const children = json.data?.children ?? [];
       console.log("[doFetch] r/" + sub + " →", children.length, "posts");
