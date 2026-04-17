@@ -249,19 +249,27 @@ export const globalFetch = internalAction({
   handler: async (ctx) => {
     // 1. All users with active settings
     const allSettings = await ctx.runQuery(internal.reddit.getAllActiveSettings);
-    if (allSettings.length === 0) return;
+    if (allSettings.length === 0) {
+      console.log("[globalFetch] no active users — skipping");
+      return;
+    }
 
     // 2. Unique subreddits across all users
     const uniqueSubs = [
       ...new Set(allSettings.flatMap((s) => s.subreddits.map((r) => r.toLowerCase()))),
     ];
+    console.log("[globalFetch] start — users:", allSettings.length, "| subreddits:", uniqueSubs);
 
     // 3. Fetch each subreddit once with 2s delay between requests
     const postsBySub = new Map<string, any[]>();
     for (const sub of uniqueSubs) {
       const json = await fetchJSON(sub);
       if (json) {
-        postsBySub.set(sub, json.data?.children?.map((c: any) => c.data) ?? []);
+        const posts = json.data?.children?.map((c: any) => c.data) ?? [];
+        postsBySub.set(sub, posts);
+        console.log("[globalFetch] r/" + sub + " →", posts.length, "posts");
+      } else {
+        console.warn("[globalFetch] null response for r/" + sub);
       }
       await new Promise((r) => setTimeout(r, 2000));
     }
@@ -284,6 +292,7 @@ export const globalFetch = internalAction({
       }
     }
 
+    console.log("[globalFetch] after global filter:", filteredPosts.length, "posts");
     if (filteredPosts.length === 0) return;
 
     // 5. Fan-out: match posts to each user's keywords + subreddits
@@ -317,6 +326,7 @@ export const globalFetch = internalAction({
           createdUtc:  p.created_utc ?? 0,
         }));
 
+      console.log("[globalFetch] userId:", userId, "| matched:", userPosts.length, "posts");
       if (userPosts.length === 0) continue;
 
       // 6. Upsert into redditResults; get only newly inserted postIds
@@ -324,6 +334,7 @@ export const globalFetch = internalAction({
         userId,
         posts: userPosts,
       });
+      console.log("[globalFetch] userId:", userId, "| inserted:", newPostIds.length, "new posts");
 
       // 7. Send alerts for new posts
       if (newPostIds.length > 0) {
