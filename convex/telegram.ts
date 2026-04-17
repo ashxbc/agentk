@@ -257,14 +257,13 @@ export const sendAlerts = internalAction({
         // use fallback "—"
       }
 
-      const title = (post.title ?? post.body.slice(0, 120))
-        .replace(/[-_*[\]()~`>#+=|{}.!]/g, "\\$&");
+      const title = esc(post.title ?? post.body.slice(0, 120));
       const alertText =
         `🔥 *${title}*\n\n` +
-        `🔑 Keyword: \`${matchedKeyword}\`\n` +
-        `📌 r/${post.subreddit}\n` +
-        `⬆️ ${post.ups} upvotes · 💬 ${post.numComments} comments\n` +
-        `👤 u/${post.author} · ${karma} karma`;
+        `🔑 Keyword: \`${esc(matchedKeyword)}\`\n` +
+        `📌 r/${esc(post.subreddit)}\n` +
+        `⬆️ ${esc(String(post.ups))} upvotes · 💬 ${esc(String(post.numComments))} comments\n` +
+        `👤 u/${esc(post.author)} · ${esc(karma)} karma`;
 
       const sent = await tgSend(botToken, chatId, alertText, post.url);
       if (sent) {
