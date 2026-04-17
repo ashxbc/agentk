@@ -11,7 +11,6 @@
 import type * as agentTokens from "../agentTokens.js";
 import type * as auth from "../auth.js";
 import type * as billing from "../billing.js";
-import type * as clearDevData from "../clearDevData.js";
 import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as discord from "../discord.js";
@@ -32,7 +31,6 @@ declare const fullApi: ApiFromModules<{
   agentTokens: typeof agentTokens;
   auth: typeof auth;
   billing: typeof billing;
-  clearDevData: typeof clearDevData;
   crons: typeof crons;
   devices: typeof devices;
   discord: typeof discord;

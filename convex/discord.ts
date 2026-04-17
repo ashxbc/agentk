@@ -247,7 +247,7 @@ export const sendDiscordAlerts = internalAction({
     const thirtyMinAgoSec = Date.now() / 1000 - 1800;
 
     for (const postId of postIds) {
-      const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId });
+      const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "discord" });
       if (alerted) continue;
 
       const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
@@ -273,7 +273,7 @@ export const sendDiscordAlerts = internalAction({
       };
 
       await sendDmMessage(botToken, channelId, undefined, [embed]);
-      await ctx.runMutation(internal.telegram.markAlerted, { userId, postId });
+      await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "discord" });
     }
   },
 });

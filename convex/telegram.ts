@@ -5,12 +5,12 @@ import { internal } from "./_generated/api";
 // ── Internal helpers ──────────────────────────────────────────────────────────
 
 export const isAlerted = internalQuery({
-  args: { userId: v.id("users"), postId: v.string() },
-  handler: async (ctx, { userId, postId }) => {
+  args: { userId: v.id("users"), postId: v.string(), platform: v.string() },
+  handler: async (ctx, { userId, postId, platform }) => {
     const row = await ctx.db
       .query("alertedPosts")
-      .withIndex("by_user_post", (q) =>
-        q.eq("userId", userId).eq("postId", postId)
+      .withIndex("by_user_post_platform", (q) =>
+        q.eq("userId", userId).eq("postId", postId).eq("platform", platform)
       )
       .first();
     return row !== null;
@@ -18,9 +18,9 @@ export const isAlerted = internalQuery({
 });
 
 export const markAlerted = internalMutation({
-  args: { userId: v.id("users"), postId: v.string() },
-  handler: async (ctx, { userId, postId }) => {
-    await ctx.db.insert("alertedPosts", { userId, postId, alertedAt: Date.now() });
+  args: { userId: v.id("users"), postId: v.string(), platform: v.string() },
+  handler: async (ctx, { userId, postId, platform }) => {
+    await ctx.db.insert("alertedPosts", { userId, postId, platform, alertedAt: Date.now() });
   },
 });
 
@@ -233,7 +233,7 @@ export const sendAlerts = internalAction({
     const thirtyMinAgoSec = (Date.now() / 1000) - 1800;
 
     for (const postId of postIds) {
-      const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId });
+      const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "telegram" });
       if (alerted) continue;
 
       const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
@@ -273,7 +273,7 @@ export const sendAlerts = internalAction({
 
       const sent = await tgSend(botToken, chatId, alertText, post.url);
       if (sent) {
-        await ctx.runMutation(internal.telegram.markAlerted, { userId, postId });
+        await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "telegram" });
       }
     }
   },
