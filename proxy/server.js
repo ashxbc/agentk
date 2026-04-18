@@ -21,9 +21,18 @@ const PROXIES = (process.env.WEBSHARE_PROXIES || "")
 
 console.log(`[proxy] loaded ${PROXIES.length} WebShare proxies`);
 
-function randomProxy() {
+// Round-robin rotation — advances every 10 subreddit fetches
+let proxyIndex   = 0;
+let fetchCounter = 0;
+
+function nextProxy() {
   if (PROXIES.length === 0) return null;
-  return PROXIES[Math.floor(Math.random() * PROXIES.length)];
+  fetchCounter++;
+  if (fetchCounter % 10 === 0) {
+    proxyIndex = (proxyIndex + 1) % PROXIES.length;
+    console.log(`[proxy] rotated to proxy ${proxyIndex}: ${PROXIES[proxyIndex].host}`);
+  }
+  return PROXIES[proxyIndex];
 }
 
 // ── Caches ────────────────────────────────────────────────────────────────────
@@ -47,7 +56,7 @@ function dedupFetch(key, fetchFn) {
 
 async function fetchReddit(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const proxy = randomProxy();
+    const proxy = nextProxy();
     try {
       const options = {
         headers: {
