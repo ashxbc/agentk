@@ -539,16 +539,8 @@ export default function RedditFeed({ posts, loading }: Props) {
   const [minUpvotes, setMinUpvotes] = useState(0);
   const [minComments, setMinComments] = useState(0);
   const [minKarma, setMinKarma] = useState(0);
-  const [subInput, setSubInput]           = useState("");
-  const [loaded, setLoaded]               = useState(false);
-  const [tourDone, setTourDone]           = useState(() =>
-    typeof window !== "undefined" && !!localStorage.getItem("agentk_tour_v1")
-  );
-  const [warmingUpSince, setWarmingUpSince] = useState(() =>
-    typeof window !== "undefined"
-      ? parseInt(localStorage.getItem("agentk_warming_up") ?? "0")
-      : 0
-  );
+  const [subInput, setSubInput] = useState("");
+  const [loaded, setLoaded]     = useState(false);
 
   // Keywords from the currently active group only
   const keywords = keywordGroups[activeGroupIdx]?.keywords ?? [];
@@ -582,21 +574,6 @@ export default function RedditFeed({ posts, loading }: Props) {
       tooltipRef.current = null;
     };
   }, []);
-
-  // React to tour completion
-  useEffect(() => {
-    const handler = () => setTourDone(true);
-    window.addEventListener("agentk-tour-done", handler);
-    return () => window.removeEventListener("agentk-tour-done", handler);
-  }, []);
-
-  // Clear warming-up flag once posts arrive
-  useEffect(() => {
-    if (posts.length > 0 && warmingUpSince > 0) {
-      localStorage.removeItem("agentk_warming_up");
-      setWarmingUpSince(0);
-    }
-  }, [posts.length]);
 
   // Populate from Convex settings
   if (settings && !loaded) {
@@ -639,15 +616,6 @@ export default function RedditFeed({ posts, loading }: Props) {
       minComments: patch.minComments ?? minComments,
       minKarma: patch.minKarma ?? minKarma,
     };
-    // First-time complete setup → show warming-up state after tour
-    const wasIncomplete = !settings || settings.keywords.length === 0 || settings.subreddits.length === 0;
-    const willBeComplete = merged.keywords.length > 0 && merged.subreddits.length > 0;
-    if (wasIncomplete && willBeComplete && !localStorage.getItem("agentk_warming_up")) {
-      const now = Date.now();
-      localStorage.setItem("agentk_warming_up", String(now));
-      setWarmingUpSince(now);
-    }
-
     await upsertSettings(merged);
   }
 
@@ -828,13 +796,15 @@ export default function RedditFeed({ posts, loading }: Props) {
     if (posts.length > 0) appendBatch(renderGen.current);
   }, [posts, appendBatch]);
 
-  const hasKeywords   = keywords.length > 0;
-  const hasSubreddits = subreddits.length > 0;
-  const WARMING_WINDOW = 10 * 60 * 1000;
-  const isWarmingUp   = tourDone && hasKeywords && hasSubreddits &&
-                        posts.length === 0 && !loading &&
-                        warmingUpSince > 0 &&
-                        Date.now() - warmingUpSince < WARMING_WINDOW;
+  const hasKeywords    = keywords.length > 0;
+  const hasSubreddits  = subreddits.length > 0;
+  const firstSetupAt   = settings?.firstSetupAt ?? 0;
+  const WARMING_WINDOW = 15 * 60 * 1000;
+  const isWarmingUp    = settings?.tourCompleted === true &&
+                         hasKeywords && hasSubreddits &&
+                         posts.length === 0 && !loading &&
+                         firstSetupAt > 0 &&
+                         Date.now() - firstSetupAt < WARMING_WINDOW;
 
   return (
     <div

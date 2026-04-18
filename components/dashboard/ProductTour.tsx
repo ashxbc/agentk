@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
-const STORAGE_KEY = "agentk_tour_v1";
 const CARD_W = 264;
 
 interface TourStep {
@@ -46,18 +47,19 @@ const STEPS: TourStep[] = [
 ];
 
 export default function ProductTour() {
-  const [step, setStep]       = useState(0);
-  const [visible, setVisible] = useState(false);
-  const [pos, setPos]         = useState<{ top: number; left: number } | null>(null);
-  const [opacity, setOpacity] = useState(1);
-  const cardRef               = useRef<HTMLDivElement>(null);
+  const settings      = useQuery(api.userSettings.getUserSettings);
+  const completeTour  = useMutation(api.userSettings.setTourCompleted);
 
-  // Only show for first-time users
-  useEffect(() => {
-    if (typeof window !== "undefined" && !localStorage.getItem(STORAGE_KEY)) {
-      setVisible(true);
-    }
-  }, []);
+  const [step, setStep]             = useState(0);
+  const [localDismissed, setLocalDismissed] = useState(false);
+  const [pos, setPos]               = useState<{ top: number; left: number } | null>(null);
+  const [opacity, setOpacity]       = useState(1);
+  const cardRef                     = useRef<HTMLDivElement>(null);
+
+  // settings === undefined means still loading — don't flash the tour
+  const visible = !localDismissed &&
+                  settings !== undefined &&
+                  settings?.tourCompleted !== true;
 
   // Position card next to target element
   useEffect(() => {
@@ -71,8 +73,8 @@ export default function ProductTour() {
     const compute = () => {
       const el = document.querySelector(`[data-tour="${current.target}"]`);
       if (!el) { setPos(null); return; }
-      const rect   = el.getBoundingClientRect();
-      const cardH  = cardRef.current?.offsetHeight ?? 175;
+      const rect  = el.getBoundingClientRect();
+      const cardH = cardRef.current?.offsetHeight ?? 175;
       setPos({
         left: rect.left - CARD_W - 16,
         top:  Math.max(8, Math.min(
@@ -101,9 +103,8 @@ export default function ProductTour() {
   }, [step, visible]);
 
   const dismiss = () => {
-    localStorage.setItem(STORAGE_KEY, "1");
-    window.dispatchEvent(new Event("agentk-tour-done"));
-    setVisible(false);
+    setLocalDismissed(true);           // instant hide — no flicker
+    completeTour().catch(console.error); // persists to DB for this user
   };
 
   const goNext = () => {
@@ -156,17 +157,17 @@ export default function ProductTour() {
         />
       )}
 
-      {/* Progress dots — active dot stretches into a pill */}
+      {/* Progress dots */}
       <div style={{ display: "flex", gap: "5px", marginBottom: "14px" }}>
         {STEPS.map((_, i) => (
           <div
             key={i}
             style={{
-              width:      i === step ? "18px" : "6px",
-              height:     "6px",
+              width:        i === step ? "18px" : "6px",
+              height:       "6px",
               borderRadius: "3px",
-              background: i === step ? "#DF849D" : "rgba(0,0,0,0.09)",
-              transition: "width 0.25s ease, background 0.25s ease",
+              background:   i === step ? "#DF849D" : "rgba(0,0,0,0.09)",
+              transition:   "width 0.25s ease, background 0.25s ease",
             }}
           />
         ))}

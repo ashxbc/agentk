@@ -41,16 +41,39 @@ export const upsertUserSettings = mutation({
 
     const wasIncomplete = !existing || existing.keywords.length === 0 || (existing.subreddits ?? []).length === 0;
     const willBeComplete = args.keywords.length > 0 && args.subreddits.length > 0;
+    const isFirstSetup   = wasIncomplete && willBeComplete && !existing?.firstSetupAt;
+    const firstSetupAt   = isFirstSetup ? { firstSetupAt: Date.now() } : {};
 
     if (existing) {
-      await ctx.db.patch(existing._id, { ...args });
+      await ctx.db.patch(existing._id, { ...args, ...firstSetupAt });
     } else {
-      await ctx.db.insert("userSettings", { userId, ...args, lastFetchAt: 0 });
+      await ctx.db.insert("userSettings", { userId, ...args, lastFetchAt: 0, ...firstSetupAt });
     }
 
     // Kick off an immediate global fetch the first time a user has both keywords and subreddits
-    if (wasIncomplete && willBeComplete) {
+    if (isFirstSetup) {
       await ctx.scheduler.runAfter(0, internal.reddit.globalFetch, {});
+    }
+  },
+});
+
+export const setTourCompleted = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return;
+    const existing = await ctx.db
+      .query("userSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .unique();
+    if (existing) {
+      await ctx.db.patch(existing._id, { tourCompleted: true });
+    } else {
+      await ctx.db.insert("userSettings", {
+        userId, keywords: [], excluded: [], subreddits: [],
+        minUpvotes: 0, minComments: 0, lastFetchAt: 0,
+        tourCompleted: true,
+      });
     }
   },
 });

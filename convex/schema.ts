@@ -35,6 +35,8 @@ export default defineSchema({
     activeGroupIdx: v.optional(v.number()),
     minKarma:       v.optional(v.number()),
     alertsPerHour:  v.optional(v.number()),
+    tourCompleted:  v.optional(v.boolean()),
+    firstSetupAt:   v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
   agentTokens: defineTable({
