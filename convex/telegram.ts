@@ -29,9 +29,11 @@ export const countRecentAlerts = internalQuery({
   handler: async (ctx, { userId, platform, since }) => {
     const rows = await ctx.db
       .query("alertedPosts")
-      .withIndex("by_user_post", (q) => q.eq("userId", userId))
+      .withIndex("by_user_platform_alerted", (q) =>
+        q.eq("userId", userId).eq("platform", platform).gte("alertedAt", since)
+      )
       .collect();
-    return rows.filter((r) => r.platform === platform && r.alertedAt >= since).length;
+    return rows.length;
   },
 });
 

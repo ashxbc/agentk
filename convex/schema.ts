@@ -19,8 +19,9 @@ export default defineSchema({
     createdUtc:  v.number(),
     fetchedAt:   v.number(),
   })
-    .index("by_user",      ["userId"])
-    .index("by_user_post", ["userId", "postId"]),
+    .index("by_user",         ["userId"])
+    .index("by_user_post",    ["userId", "postId"])
+    .index("by_user_created", ["userId", "createdUtc"]),
 
   userSettings: defineTable({
     userId:        v.id("users"),
@@ -67,8 +68,9 @@ export default defineSchema({
     platform:  v.optional(v.string()),
     alertedAt: v.number(),
   })
-    .index("by_user_post",          ["userId", "postId"])
-    .index("by_user_post_platform", ["userId", "postId", "platform"]),
+    .index("by_user_post",            ["userId", "postId"])
+    .index("by_user_post_platform",   ["userId", "postId", "platform"])
+    .index("by_user_platform_alerted",["userId", "platform", "alertedAt"]),
 
   karmaCache: defineTable({
     author:    v.string(),

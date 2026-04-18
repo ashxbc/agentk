@@ -77,7 +77,7 @@ export const getResults = query({
 
     const allPosts = await ctx.db
       .query("redditResults")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .withIndex("by_user_created", (q) => q.eq("userId", userId).gte("createdUtc", cutoffSec))
       .collect();
 
     if (!settings) {
