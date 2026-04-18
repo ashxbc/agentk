@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import Sidebar, { type ActiveTab } from "@/components/dashboard/Sidebar";
 import RedditFeed from "@/components/dashboard/RedditFeed";
 import SettingsPanel from "@/components/dashboard/SettingsPanel";
+import ProductTour from "@/components/dashboard/ProductTour";
 
 
 export default function DashboardPage() {
@@ -64,6 +65,8 @@ export default function DashboardPage() {
           <SettingsPanel open={activeTab === "settings"} />
         </div>
       </main>
+
+      {activeTab === "reddit" && <ProductTour />}
     </div>
   );
 }

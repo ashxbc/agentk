@@ -816,6 +816,7 @@ export default function RedditFeed({ posts, loading }: Props) {
       <div
         ref={canvasRef}
         className="reddit-canvas"
+        data-tour="feed"
         style={
           {
             flex: 1,
@@ -907,6 +908,7 @@ export default function RedditFeed({ posts, loading }: Props) {
 
       {/* Feed Toolkit */}
       <div
+        data-tour="toolbar"
         style={{
           position: "absolute",
           right: "12px",
