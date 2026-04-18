@@ -12,7 +12,8 @@ crons.interval(
 crons.interval(
   "global-reddit-fetch",
   { minutes: 5 },
-  internal.reddit.globalFetch
+  internal.reddit.globalFetch,
+  {}
 );
 
 export default crons;
