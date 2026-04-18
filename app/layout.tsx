@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Roboto_Slab, Dancing_Script } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -44,9 +45,11 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${robotoSlab.variable} ${dancingScript.variable} bg-background text-on-background font-body selection:bg-primary-fixed-dim selection:text-on-primary-fixed`}
       >
-        <Providers>
-          {children}
-        </Providers>
+        <ConvexAuthNextjsServerProvider>
+          <Providers>
+            {children}
+          </Providers>
+        </ConvexAuthNextjsServerProvider>
       </body>
     </html>
   );
