@@ -57,7 +57,7 @@ export default function SettingsPanel({ open }: Props) {
 <b>/email</b> — view your email &amp; auth status<br>
 <b>/account</b> — view or update your display name<br>
 <b>/token</b> — your Telegram &amp; Discord alert token<br>
-<b>/cap N</b> — limit alerts to N per hour (e.g. /cap 5)<br>
+<b>/cap N</b> — max posts alerted per hour on Telegram &amp; Discord (e.g. /cap 5)<br>
 <b>/delete</b> — delete your account`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, booted, user]);

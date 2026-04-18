@@ -559,6 +559,12 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
 
   // Global karma tooltip div mounted on body
   useEffect(() => {
+    if (!document.getElementById("kf-spin-style")) {
+      const s = document.createElement("style");
+      s.id = "kf-spin-style";
+      s.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
+      document.head.appendChild(s);
+    }
     const div = document.createElement("div");
     div.style.cssText =
       "position:fixed;z-index:99999;background:#fff;color:#191918;font-size:10px;font-weight:700;padding:5px 10px;border-radius:10px;pointer-events:none;display:none;white-space:nowrap;border:1px solid rgba(0,0,0,0.09)";
@@ -723,7 +729,13 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
             if (cached !== undefined) {
               show(cached);
             } else {
-              show("...");
+              // Show spinner while fetching
+              const rect = fireEl.getBoundingClientRect();
+              tip.innerHTML = `<svg style="animation:spin .6s linear infinite;display:inline-block;vertical-align:middle" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+              tip.style.left = `${rect.right + 13}px`;
+              tip.style.top = `${rect.top - 8}px`;
+              tip.style.transform = "none";
+              tip.style.display = "block";
               try {
                 const karma = await fetchKarmaRef.current({ author: uname });
                 const kStr = karma != null ? formatCount(karma) + " karma" : "—";
@@ -743,16 +755,6 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
         }
 
         inner.appendChild(card);
-      });
-
-      // Pre-warm karma cache for this batch so first hover shows instantly
-      batch.forEach((p) => {
-        if (!karmaCache.current.has(p.author)) {
-          fetch(`/api/reddit-user?u=${encodeURIComponent(p.author)}`)
-            .then((r) => r.json())
-            .then((json) => { karmaCache.current.set(p.author, formatCount(json.karma ?? 0) + " karma"); })
-            .catch(() => { karmaCache.current.set(p.author, "—"); });
-        }
       });
 
       offset.current += batch.length;
@@ -1314,38 +1316,36 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
       {/* Metrics modal */}
       {activeModal === "metrics" && (
         <FeedModal title="Reddit Metrics" onClose={() => setActiveModal(null)}>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-around",
-              padding: "4px 0",
-            }}
-          >
-            <Stepper
-              value={minUpvotes}
-              label="Min Upvotes"
-              onChange={(v) => {
-                setMinUpvotes(v);
-                saveSettings({ minUpvotes: v });
-              }}
-            />
-            <Stepper
-              value={minComments}
-              label="Min Comments"
-              onChange={(v) => {
-                setMinComments(v);
-                saveSettings({ minComments: v });
-              }}
-            />
-            <Stepper
-              value={minKarma}
-              label="Min Karma"
-              step={100}
-              onChange={(v) => {
-                setMinKarma(v);
-                saveSettings({ minKarma: v });
-              }}
-            />
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", padding: "4px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-around" }}>
+              <Stepper
+                value={minUpvotes}
+                label="Min Upvotes"
+                onChange={(v) => {
+                  setMinUpvotes(v);
+                  saveSettings({ minUpvotes: v });
+                }}
+              />
+              <Stepper
+                value={minComments}
+                label="Min Comments"
+                onChange={(v) => {
+                  setMinComments(v);
+                  saveSettings({ minComments: v });
+                }}
+              />
+            </div>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <Stepper
+                value={minKarma}
+                label="Min Karma"
+                step={100}
+                onChange={(v) => {
+                  setMinKarma(v);
+                  saveSettings({ minKarma: v });
+                }}
+              />
+            </div>
           </div>
         </FeedModal>
       )}
