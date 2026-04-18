@@ -24,7 +24,7 @@ export default function Footer() {
 
         {/* Description */}
         <p className="text-sm leading-relaxed max-w-xs" style={{ color: "#B2A28C" }}>
-          Monitors Reddit 24/7 and alerts you on Telegram the moment your keywords appear.
+          Monitors Reddit 24/7 and alerts you the moment your keywords appear.
         </p>
 
         {/* Links */}
