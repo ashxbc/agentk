@@ -244,9 +244,12 @@ export const getAllActiveSettings = internalQuery({
 
 // ── globalFetch — shared 3-min cron: 1 fetch per subreddit, fan-out to users ─
 
+const BATCH_SIZE = 25;
+const jitter = () => Math.floor(Math.random() * 1000);
+
 export const globalFetch = internalAction({
-  args: {},
-  handler: async (ctx) => {
+  args: { subsToFetch: v.optional(v.array(v.string())) },
+  handler: async (ctx, { subsToFetch }) => {
     // 1. All users with active settings
     const allSettings = await ctx.runQuery(internal.reddit.getAllActiveSettings);
     if (allSettings.length === 0) {
@@ -254,15 +257,25 @@ export const globalFetch = internalAction({
       return;
     }
 
-    // 2. Unique subreddits across all users
-    const uniqueSubs = [
+    // 2. Unique subreddits — use override if provided (overflow batch), else derive from all users
+    const allUniqueSubs = subsToFetch ?? [
       ...new Set(allSettings.flatMap((s) => s.subreddits.map((r) => r.toLowerCase()))),
     ];
-    console.log("[globalFetch] start — users:", allSettings.length, "| subreddits:", uniqueSubs);
 
-    // 3. Fetch each subreddit once with 2s delay between requests
+    // 3. Batch split: if > 25 subs, process first 25 and schedule the rest in 90s
+    const batchSubs    = allUniqueSubs.slice(0, BATCH_SIZE);
+    const overflowSubs = allUniqueSubs.slice(BATCH_SIZE);
+
+    if (overflowSubs.length > 0) {
+      console.log(`[globalFetch] ${allUniqueSubs.length} subs — batch 1: ${batchSubs.length}, overflow: ${overflowSubs.length} scheduled in 90s`);
+      await ctx.scheduler.runAfter(90_000, internal.reddit.globalFetch, { subsToFetch: overflowSubs });
+    } else {
+      console.log("[globalFetch] start — users:", allSettings.length, "| subreddits:", batchSubs.length);
+    }
+
+    // 4. Fetch each subreddit once with jittered delay between requests
     const postsBySub = new Map<string, any[]>();
-    for (const sub of uniqueSubs) {
+    for (const sub of batchSubs) {
       const json = await fetchJSON(sub);
       if (json) {
         const posts = json.data?.children?.map((c: any) => c.data) ?? [];
@@ -271,7 +284,7 @@ export const globalFetch = internalAction({
       } else {
         console.warn("[globalFetch] null response for r/" + sub);
       }
-      await new Promise((r) => setTimeout(r, 2000));
+      await new Promise((r) => setTimeout(r, 1500 + jitter()));
     }
 
     // 4. Global post filter: last 6h, not deleted/removed, title >50 chars, score ≥1

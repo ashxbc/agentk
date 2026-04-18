@@ -2,13 +2,11 @@ const express  = require("express");
 const NodeCache = require("node-cache");
 const { ProxyAgent, fetch: undiciFetch } = require("undici");
 
-const app    = express();
-const PORT   = process.env.PORT    || 3001;
+const app     = express();
+const PORT    = process.env.PORT     || 3001;
 const API_KEY = process.env.PROXY_API_KEY;
 
 // ── WebShare proxy list ───────────────────────────────────────────────────────
-// Format: IP:PORT:USER:PASS,IP:PORT:USER:PASS,...
-// Set via WEBSHARE_PROXIES env var on the VPS
 
 const PROXIES = (process.env.WEBSHARE_PROXIES || "")
   .split(",")
@@ -21,18 +19,40 @@ const PROXIES = (process.env.WEBSHARE_PROXIES || "")
 
 console.log(`[proxy] loaded ${PROXIES.length} WebShare proxies`);
 
-// Round-robin rotation — advances every 10 subreddit fetches
-let proxyIndex   = 0;
-let fetchCounter = 0;
+// ── User-agent pool ───────────────────────────────────────────────────────────
+
+const USER_AGENTS = [
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:125.0) Gecko/20100101 Firefox/125.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 OPR/110.0.0.0",
+];
+
+function randomUA() {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+// ── True round-robin — rotates on every single request ───────────────────────
+
+let proxyIndex = 0;
+let reqCounter = 0;
 
 function nextProxy() {
   if (PROXIES.length === 0) return null;
-  fetchCounter++;
-  if (fetchCounter % 10 === 0) {
-    proxyIndex = (proxyIndex + 1) % PROXIES.length;
-    console.log(`[proxy] rotated to proxy ${proxyIndex}: ${PROXIES[proxyIndex].host}`);
-  }
-  return PROXIES[proxyIndex];
+  const proxy = PROXIES[proxyIndex];
+  proxyIndex = (proxyIndex + 1) % PROXIES.length;
+  reqCounter++;
+  return proxy;
+}
+
+// ── Jitter helper ─────────────────────────────────────────────────────────────
+
+function jitter(baseMs) {
+  return baseMs + Math.floor(Math.random() * 800);
 }
 
 // ── Caches ────────────────────────────────────────────────────────────────────
@@ -57,10 +77,11 @@ function dedupFetch(key, fetchFn) {
 async function fetchReddit(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const proxy = nextProxy();
+    const ua    = randomUA();
     try {
       const options = {
         headers: {
-          "User-Agent":      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+          "User-Agent":      ua,
           "Accept":          "application/json, text/plain, */*",
           "Accept-Language": "en-US,en;q=0.9",
         },
@@ -73,15 +94,17 @@ async function fetchReddit(url) {
         );
       }
 
+      console.log(`[proxy] req #${reqCounter} → ${proxy?.host ?? "direct"} | ${url.split("?")[0].replace("https://www.reddit.com", "")}`);
+
       const res = await undiciFetch(url, options);
 
       if (res.status === 429) {
-        console.warn(`[proxy] 429 rate-limited (attempt ${attempt + 1}): ${url}`);
-        if (attempt < 2) continue;
+        console.warn(`[proxy] 429 via ${proxy?.host ?? "direct"} (attempt ${attempt + 1}): ${url}`);
+        if (attempt < 2) { await new Promise((r) => setTimeout(r, jitter(1000 * (attempt + 1)))); continue; }
         return { status: 429, data: null };
       }
       if (res.status >= 500 && attempt < 2) {
-        await new Promise((r) => setTimeout(r, 500 * (attempt + 1)));
+        await new Promise((r) => setTimeout(r, jitter(500 * (attempt + 1))));
         continue;
       }
       if (!res.ok) {
@@ -94,7 +117,7 @@ async function fetchReddit(url) {
       return { status: 200, data };
     } catch (err) {
       console.error(`[proxy] fetch error (attempt ${attempt + 1}) via ${proxy?.host ?? "direct"}: ${err.message}`);
-      if (attempt < 2) continue;
+      if (attempt < 2) { await new Promise((r) => setTimeout(r, jitter(500))); continue; }
       return { status: 0, data: null };
     }
   }
