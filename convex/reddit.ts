@@ -73,16 +73,15 @@ export const getResults = query({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .unique();
 
-    const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
+    const cutoffMs = Date.now() - SIX_HOURS_MS;
 
     const allPosts = await ctx.db
       .query("redditResults")
-      .withIndex("by_user_created", (q) => q.eq("userId", userId).gte("createdUtc", cutoffSec))
+      .withIndex("by_user_fetched", (q) => q.eq("userId", userId).gte("fetchedAt", cutoffMs))
       .collect();
 
     if (!settings) {
       return allPosts
-        .filter((p) => p.createdUtc >= cutoffSec)
         .sort((a, b) => b.createdUtc - a.createdUtc)
         .slice(0, 25);
     }
@@ -93,7 +92,6 @@ export const getResults = query({
 
     return allPosts
       .filter((p) => {
-        if (p.createdUtc < cutoffSec) return false;
         if (allowedSubs.size > 0 && !allowedSubs.has(p.subreddit.toLowerCase())) return false;
         const text = `${p.title ?? ""} ${p.body}`.toLowerCase();
         if (keywordsLower.length > 0 && !keywordsLower.some((k) => text.includes(k))) return false;
@@ -136,11 +134,10 @@ export const deleteExpiredResults = internalMutation({
 export const deleteExpiredForUser = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
-    const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
+    const cutoffMs = Date.now() - SIX_HOURS_MS;
     const expired = await ctx.db
       .query("redditResults")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .filter((q) => q.lt(q.field("createdUtc"), cutoffSec))
+      .withIndex("by_user_fetched", (q) => q.eq("userId", userId).lt("fetchedAt", cutoffMs))
       .collect();
     for (const doc of expired) await ctx.db.delete(doc._id);
   },

@@ -831,7 +831,8 @@ export default function RedditFeed({ posts, loading }: Props) {
           } as React.CSSProperties
         }
       >
-        {settings?.tourCompleted !== true ? null
+        {settings === undefined ? null
+        : settings?.tourCompleted !== true ? null
         : loading && posts.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
             <svg style={{ animation: "spin .5s linear infinite" }} viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#DF849D" strokeWidth="2">

@@ -21,7 +21,8 @@ export default defineSchema({
   })
     .index("by_user",         ["userId"])
     .index("by_user_post",    ["userId", "postId"])
-    .index("by_user_created", ["userId", "createdUtc"]),
+    .index("by_user_created", ["userId", "createdUtc"])
+    .index("by_user_fetched", ["userId", "fetchedAt"]),
 
   userSettings: defineTable({
     userId:        v.id("users"),
