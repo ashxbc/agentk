@@ -1177,7 +1177,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
             <TagBox
               pills={keywordGroups[activeGroupIdx]?.keywords ?? []}
               onAdd={(v) => {
-                if (!keywords.includes(v) && keywords.length < 15) {
+                if (!keywords.includes(v) && keywords.length < 50) {
                   const next = keywordGroups.map((g, i) =>
                     i === activeGroupIdx
                       ? { ...g, keywords: [...g.keywords, v] }
@@ -1206,7 +1206,7 @@ export default function RedditFeed({ posts, loading, onReload }: Props) {
                 display: "block",
               }}
             >
-              {keywords.length}/15 · Press Enter to add
+              {keywords.length}/50 · Press Enter to add
             </span>
           </div>
           <div>
