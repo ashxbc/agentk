@@ -831,53 +831,37 @@ export default function RedditFeed({ posts, loading }: Props) {
           } as React.CSSProperties
         }
       >
-        {loading && posts.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: "12px",
-            }}
-          >
-            <svg
-              style={{ animation: "spin .5s linear infinite" }}
-              viewBox="0 0 24 24"
-              width="28"
-              height="28"
-              fill="none"
-              stroke="#DF849D"
-              strokeWidth="2"
-            >
+        {settings?.tourCompleted !== true ? null
+        : loading && posts.length === 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
+            <svg style={{ animation: "spin .5s linear infinite" }} viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#DF849D" strokeWidth="2">
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
             </svg>
-            <p style={{ fontSize: "13px", color: "#B2A28C" }}>
-              Loading results…
-            </p>
+            <p style={{ fontSize: "13px", color: "#B2A28C" }}>Loading results…</p>
           </div>
         ) : !loading && posts.length === 0 ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: "12px",
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-            </svg>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>
-              No posts found
-            </p>
-            <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-              No matching posts found. Check back soon.
-            </p>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
+            {!hasKeywords || !hasSubreddits ? (
+              <>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>Setup required</p>
+                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
+                  No keywords or subreddits set. Configure them to get started.
+                </p>
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
+                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>No posts found</p>
+                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
+                  No matching posts found. Check back soon.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div ref={innerRef} style={{ position: "relative", width: "100%" }} />

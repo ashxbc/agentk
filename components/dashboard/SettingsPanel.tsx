@@ -13,7 +13,7 @@ interface Props {
 
 type Msg = { from: "bot" | "user"; html?: string; text?: string };
 
-const COMMANDS = ["/email", "/account", "/token", "/delete"] as const;
+const COMMANDS = ["/email", "/account", "/token", "/cap", "/removecap", "/delete"] as const;
 
 export default function SettingsPanel({ open }: Props) {
   const { signOut }    = useAuthActions();
@@ -57,7 +57,8 @@ export default function SettingsPanel({ open }: Props) {
 <b>/email</b> — view your email &amp; auth status<br>
 <b>/account</b> — view or update your display name<br>
 <b>/token</b> — your Telegram &amp; Discord alert token<br>
-<b>/cap</b> — max posts alerted per hour on Telegram &amp; Discord (e.g. /cap 5)<br>
+<b>/cap</b> — set max alerts per hour (e.g. /cap 5)<br>
+<b>/removecap</b> — remove alert limit<br>
 <b>/delete</b> — delete your account`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, booted, user]);
@@ -142,6 +143,11 @@ export default function SettingsPanel({ open }: Props) {
           );
         }).catch(() => addBot(`Something went wrong. Please try again.`));
 
+      } else if (cmd === "/removecap") {
+        setAlertCap({ alertsPerHour: undefined }).then(() => {
+          addBot(`Alert cap removed. You'll receive all alerts without limit.`);
+        }).catch(() => addBot(`Something went wrong. Please try again.`));
+
       } else if (cmd === "/delete") {
         addBot(
           `⚠️ <strong>This will permanently delete your account and all data.</strong><br><br>` +
@@ -157,7 +163,7 @@ export default function SettingsPanel({ open }: Props) {
         });
 
       } else {
-        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap</b>, or <b>/delete</b>.`);
+        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap</b>, <b>/removecap</b>, or <b>/delete</b>.`);
       }
     }, 250);
   }
@@ -209,11 +215,12 @@ export default function SettingsPanel({ open }: Props) {
           <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: "#fff", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.08)", padding: "10px", width: "228px", zIndex: 10 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
               {[
-                ["/email",   "Email & auth status"],
-                ["/account", "View or rename"],
-                ["/token",   "Your alert token"],
-                ["/cap",     "Alert cap per hour"],
-                ["/delete",  "Delete account"],
+                ["/email",     "Email & auth status"],
+                ["/account",   "View or rename"],
+                ["/token",     "Your alert token"],
+                ["/cap",       "Set alert cap"],
+                ["/removecap", "Remove alert cap"],
+                ["/delete",    "Delete account"],
               ].map(([cmd, desc]) => (
                 <button key={cmd} onClick={() => { setMenuOpen(false); setInput(""); dispatch(cmd); }}
                   style={{ display: "flex", flexDirection: "column", padding: "8px 10px", borderRadius: "8px", cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", textAlign: "left" }}

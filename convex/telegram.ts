@@ -170,11 +170,15 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
       );
       return new Response("ok", { status: 200 });
     }
-    const user = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
+    const user      = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
+    const settings  = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
+    const capLine   = settings?.alertsPerHour
+      ? `🔔 Max alerts/hour: ${settings.alertsPerHour}`
+      : `🔔 Max alerts/hour: Not set\\. Configure it from the website settings\\.`;
     const emailLine = `📧 Email: ${esc(user?.email ?? "—")}`;
     const nameLine  = user?.name ? `👤 Name: ${esc(user.name)}` : null;
     const tgLine    = authed.telegramUsername ? `💬 Telegram: @${esc(authed.telegramUsername)}` : null;
-    const lines     = [emailLine, nameLine, tgLine].filter(Boolean).join("\n");
+    const lines     = [emailLine, nameLine, tgLine, capLine].filter(Boolean).join("\n");
     await tgSend(botToken, chatId, `*Your Account*\n\n${lines}`);
     return new Response("ok", { status: 200 });
   }

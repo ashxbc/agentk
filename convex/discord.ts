@@ -175,11 +175,16 @@ export const discordWebhook = httpAction(async (ctx, request) => {
 
     if (cmd === "account") {
       if (!authed) return interaction("⚠️ Not connected yet. Use `/start` to connect.", true);
-      const user = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
+      const user     = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
+      const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
+      const capText  = settings?.alertsPerHour
+        ? `🔔 **Max alerts/hour:** ${settings.alertsPerHour}`
+        : `🔔 **Max alerts/hour:** Not set. Configure it from the website settings.`;
       const lines = [
         user?.email ? `📧 **Email:** ${user.email}` : null,
         user?.name  ? `👤 **Name:** ${user.name}`   : null,
         authed.discordUsername ? `💬 **Discord:** @${authed.discordUsername}` : null,
+        capText,
       ].filter(Boolean).join("\n");
       return interaction(`**Your Account**\n\n${lines}`, true);
     }
