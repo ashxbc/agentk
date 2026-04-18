@@ -4,6 +4,8 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import Image from "next/image";
+import logo from "@/app/logo.png";
 
 interface Post {
   _id: string;
@@ -863,60 +865,18 @@ export default function RedditFeed({ posts, loading }: Props) {
             </p>
           </div>
         ) : isWarmingUp ? (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              gap: "0",
-            }}
-          >
-            <style>{`
-              @keyframes scan-ring {
-                0%   { transform: scale(1);   opacity: 0.55; }
-                100% { transform: scale(3);   opacity: 0;    }
-              }
-            `}</style>
-
-            {/* Radar animation */}
-            <div style={{ position: "relative", width: "40px", height: "40px", marginBottom: "28px" }}>
-              {[0, 0.65, 1.3].map((delay) => (
-                <div
-                  key={delay}
-                  style={{
-                    position: "absolute",
-                    inset: 0,
-                    borderRadius: "50%",
-                    border: "1.5px solid #DF849D",
-                    animation: "scan-ring 2s ease-out infinite",
-                    animationDelay: `${delay}s`,
-                  }}
-                />
-              ))}
-              <div
-                style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  width: "10px",
-                  height: "10px",
-                  borderRadius: "50%",
-                  background: "#DF849D",
-                }}
-              />
-            </div>
-
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#191918", margin: "0 0 8px" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%" }}>
+            <Image
+              src={logo}
+              alt="AgentK"
+              height={36}
+              style={{ animation: "spin 1.4s linear infinite", marginBottom: "22px" }}
+            />
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "#191918", margin: 0 }}>
               Posts are on their way
             </p>
-            <p style={{ fontSize: "12.5px", color: "#B2A28C", textAlign: "center", maxWidth: "190px", lineHeight: 1.55, margin: 0 }}>
-              AgentK is scanning Reddit now. Your first results will appear here and in your alerts shortly.
-            </p>
           </div>
-        ) : !loading && posts.length === 0 ? (
+        ) : !loading && posts.length === 0 && settings?.tourCompleted === true ? (
           <div
             style={{
               display: "flex",
@@ -927,28 +887,14 @@ export default function RedditFeed({ posts, loading }: Props) {
               gap: "12px",
             }}
           >
-            <svg
-              viewBox="0 0 24 24"
-              width="36"
-              height="36"
-              fill="none"
-              stroke="#C4B9AA"
-              strokeWidth="1.5"
-            >
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
               <circle cx="11" cy="11" r="8" />
               <path d="M21 21l-4.35-4.35" />
             </svg>
             <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>
               No posts found
             </p>
-            <p
-              style={{
-                fontSize: "12px",
-                color: "#B2A28C",
-                textAlign: "center",
-                maxWidth: "220px",
-              }}
-            >
+            <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
               {!hasKeywords || !hasSubreddits
                 ? "Use the toolbar → to add keywords and subreddits."
                 : "No matching posts in the last 6h. Check back soon."}
