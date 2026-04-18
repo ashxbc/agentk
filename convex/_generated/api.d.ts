@@ -10,7 +10,6 @@
 
 import type * as agentTokens from "../agentTokens.js";
 import type * as auth from "../auth.js";
-import type * as billing from "../billing.js";
 import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as discord from "../discord.js";
@@ -19,7 +18,6 @@ import type * as reddit from "../reddit.js";
 import type * as telegram from "../telegram.js";
 import type * as userSettings from "../userSettings.js";
 import type * as users from "../users.js";
-import type * as webhookDodo from "../webhookDodo.js";
 
 import type {
   ApiFromModules,
@@ -30,7 +28,6 @@ import type {
 declare const fullApi: ApiFromModules<{
   agentTokens: typeof agentTokens;
   auth: typeof auth;
-  billing: typeof billing;
   crons: typeof crons;
   devices: typeof devices;
   discord: typeof discord;
@@ -39,7 +36,6 @@ declare const fullApi: ApiFromModules<{
   telegram: typeof telegram;
   userSettings: typeof userSettings;
   users: typeof users;
-  webhookDodo: typeof webhookDodo;
 }>;
 
 /**
