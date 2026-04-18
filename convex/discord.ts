@@ -262,8 +262,14 @@ export const sendDiscordAlerts = internalAction({
       const matchedKeyword = keywords.find((k) => postText.includes(k)) ?? "—";
       const title          = post.title ?? post.body.slice(0, 120);
 
+      // Fetch karma (best-effort)
+      let karmaStr = "—";
+      try {
+        const k = await ctx.runAction(internal.reddit.fetchKarma, { author: post.author });
+        if (k !== null) karmaStr = k >= 1000 ? (k / 1000).toFixed(1) + "k" : String(k);
+      } catch { /* fallback */ }
+
       const embed = {
-        color:     0xDF849D,
         title:     title.slice(0, 256),
         url:       post.url,
         fields: [
@@ -272,6 +278,7 @@ export const sendDiscordAlerts = internalAction({
           { name: "⬆️ Upvotes",   value: String(post.ups),          inline: true },
           { name: "💬 Comments",  value: String(post.numComments),  inline: true },
           { name: "👤 Author",    value: `u/${post.author}`,        inline: true },
+          { name: "⭐ Karma",     value: karmaStr,                  inline: true },
         ],
         timestamp: new Date(post.createdUtc * 1000).toISOString(),
         footer:    { text: "Agentk · Reddit Monitor" },
