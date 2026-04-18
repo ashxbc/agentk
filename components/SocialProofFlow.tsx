@@ -650,6 +650,108 @@ function FeedMockup() {
   );
 }
 
+/* ── Notification stack — Apple-style slide-in/dismiss loop ─────── */
+
+function NotificationStack({ visible }: { visible: boolean }) {
+  const [tgState, setTgState] = useState<"hidden" | "show" | "dismiss">("hidden");
+  const [dcState, setDcState] = useState<"hidden" | "show" | "dismiss">("hidden");
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (!visible) return;
+    function run() {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+      setTgState("hidden");
+      setDcState("hidden");
+      timers.current.push(setTimeout(() => setTgState("show"),    400));
+      timers.current.push(setTimeout(() => setTgState("dismiss"), 2800));
+      timers.current.push(setTimeout(() => setDcState("show"),    3400));
+      timers.current.push(setTimeout(() => setDcState("dismiss"), 5800));
+      timers.current.push(setTimeout(run,                         7200));
+    }
+    run();
+    return () => timers.current.forEach(clearTimeout);
+  }, [visible]);
+
+  function cardStyle(state: "hidden" | "show" | "dismiss"): React.CSSProperties {
+    return {
+      width: "100%",
+      background: "rgba(250,250,252,0.88)",
+      backdropFilter: "blur(24px) saturate(180%)",
+      border: "0.5px solid rgba(255,255,255,0.75)",
+      borderRadius: "18px",
+      padding: "12px 14px",
+      display: "flex",
+      alignItems: "center",
+      gap: "12px",
+      boxShadow: "0 10px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)",
+      opacity: state === "show" ? 1 : 0,
+      transform: state === "show"
+        ? "translateY(0) scale(1)"
+        : state === "dismiss"
+        ? "translateY(-12px) scale(0.97)"
+        : "translateY(-20px) scale(0.94)",
+      transition: state === "show"
+        ? "opacity 0.6s cubic-bezier(0.22,1,0.36,1), transform 0.6s cubic-bezier(0.22,1,0.36,1)"
+        : "opacity 0.45s cubic-bezier(0.4,0,0.2,1), transform 0.45s cubic-bezier(0.4,0,0.2,1)",
+    };
+  }
+
+  const iconBase: React.CSSProperties = {
+    flexShrink: 0, width: 38, height: 38, borderRadius: 9,
+    display: "flex", alignItems: "center", justifyContent: "center",
+  };
+
+  const textClamp: React.CSSProperties = {
+    fontSize: 13, color: "#1d1d1f", lineHeight: 1.3,
+    overflow: "hidden", textOverflow: "ellipsis",
+    display: "-webkit-box",
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: "vertical",
+  };
+
+  return (
+    <div style={{ width: "100%", maxWidth: "340px", display: "flex", flexDirection: "column", gap: "10px" }}>
+
+      {/* Telegram */}
+      <div style={cardStyle(tgState)}>
+        <div style={{ ...iconBase, background: "linear-gradient(135deg,#37aee2,#1e96c8)" }}>
+          <svg viewBox="0 0 24 24" width={22} height={22}>
+            <path fill="#fff" d="M9.417 15.181l-.397 5.584c.568 0 .814-.244 1.109-.537l2.663-2.545 5.518 4.041c1.012.564 1.725.267 1.998-.931L23.93 3.821l.001-.001c.321-1.496-.541-2.081-1.527-1.714L1.114 10.438c-1.466.564-1.444 1.375-.25 1.742l5.656 1.759 13.155-8.28c.618-.414 1.178-.185.713.226l-10.971 9.296z" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f", letterSpacing: "-0.01em" }}>Telegram</span>
+            <span style={{ fontSize: 12, color: "#6e6e73" }}>now</span>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f", marginBottom: 2, letterSpacing: "-0.01em" }}>AgentK Bot</div>
+          <div style={textClamp}>🔥 New alert · 3 months in, still at 0 users. Is this normal for early SaaS?</div>
+        </div>
+      </div>
+
+      {/* Discord */}
+      <div style={cardStyle(dcState)}>
+        <div style={{ ...iconBase, background: "#5865f2" }}>
+          <svg viewBox="0 0 24 24" width={22} height={22}>
+            <path fill="#fff" d="M20.317 4.37a19.791 19.791 0 00-4.885-1.515.074.074 0 00-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 00-5.487 0 12.64 12.64 0 00-.617-1.25.077.077 0 00-.079-.037A19.736 19.736 0 003.677 4.37a.07.07 0 00-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 00.031.057 19.9 19.9 0 005.993 3.03.078.078 0 00.084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 00-.041-.106 13.107 13.107 0 01-1.872-.892.077.077 0 01-.008-.128 10.2 10.2 0 00.372-.292.074.074 0 01.077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 01.078.01c.12.098.246.198.373.292a.077.077 0 01-.006.127 12.299 12.299 0 01-1.873.892.077.077 0 00-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 00.084.028 19.839 19.839 0 006.002-3.03.077.077 0 00.032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 00-.031-.03z" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 2 }}>
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f", letterSpacing: "-0.01em" }}>Discord</span>
+            <span style={{ fontSize: 12, color: "#6e6e73" }}>now</span>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f", marginBottom: 2, letterSpacing: "-0.01em" }}>AgentK</div>
+          <div style={textClamp}>🔥 New alert · Anyone using a CRM for cold outreach? What's working for B2B?</div>
+        </div>
+      </div>
+
+    </div>
+  );
+}
+
 /* ── Step 3: Telegram mockup — light mode ───────────────────────── */
 /* Light theme: #efede8 chat bg, #fff bot bubbles, #766ac8 user,    */
 /* #eae6f8 code bg, today label rgba(112,117,121,0.4)               */
@@ -871,30 +973,28 @@ export default function SocialProofFlow() {
       <div className="flex flex-col md:flex-row items-center gap-14 md:gap-20" ref={tgRef}>
         <div className="w-full md:w-[38%] text-left space-y-4">
           <p className="text-2xl font-bold text-on-surface leading-snug tracking-tight">
-            Instant Telegram alert the moment it happens.
+            Instant alerts on Telegram and Discord.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            No need to check the dashboard. The moment a new matching post goes live, AgentK fires a Telegram message. One tap to open the post and join the conversation.
+            The moment a matching post goes live, AgentK fires an alert to whichever platform you use. No dashboard checking required.
           </p>
         </div>
         <div className="w-full md:w-[62%]">
           <div
             style={{
-              position: "relative",
               width: "100%",
-              height: "340px",
-              background: "#FDF7EF",
+              height: "260px",
+              background: "linear-gradient(160deg,#f0f1f3 0%,#e8e9ed 100%)",
               borderRadius: "14px",
               border: "1px solid rgba(0,0,0,0.08)",
               overflow: "hidden",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
+              padding: "0 24px",
             }}
           >
-            <div style={{ transform: "rotate(-1deg)" }}>
-              <TelegramMockup visible={tgVisible} />
-            </div>
+            <NotificationStack visible={tgVisible} />
           </div>
         </div>
       </div>
