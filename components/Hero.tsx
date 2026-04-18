@@ -1,7 +1,7 @@
 export default function Hero() {
   return (
     <section className="relative flex flex-col items-center text-center px-6 max-w-4xl mx-auto pb-20">
-      <h1 className="font-headline text-6xl md:text-7xl font-extrabold tracking-tight text-on-surface leading-[1.05] mb-8">
+      <h1 className="font-headline text-6xl md:text-7xl font-extrabold tracking-tight text-on-surface leading-[1.05] mb-14">
         Monitor Reddit.{" "}
         <span className="text-primary-container brush-underline italic">
           Get alerted
