@@ -246,12 +246,17 @@ export const sendDiscordAlerts = internalAction({
     const settings  = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
     const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
 
+    const THIRTY_MIN_SEC = 30 * 60;
+
     for (const postId of postIds) {
       const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "discord" });
       if (alerted) continue;
 
       const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
       if (!post) continue;
+
+      // Skip posts older than 30 minutes (Reddit post age, not fetch time)
+      if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) continue;
 
       const postText       = `${post.title ?? ""} ${post.body}`.toLowerCase();
       const matchedKeyword = keywords.find((k) => postText.includes(k)) ?? "—";

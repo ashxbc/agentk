@@ -230,12 +230,17 @@ export const sendAlerts = internalAction({
     const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
     const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
 
+    const THIRTY_MIN_SEC = 30 * 60;
+
     for (const postId of postIds) {
       const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "telegram" });
       if (alerted) continue;
 
       const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
       if (!post) continue;
+
+      // Skip posts older than 30 minutes (Reddit post age, not fetch time)
+      if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) continue;
 
       // Compute matched keyword
       const postText       = `${post.title ?? ""} ${post.body}`.toLowerCase();
