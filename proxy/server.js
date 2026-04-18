@@ -78,6 +78,7 @@ async function fetchReddit(url) {
   for (let attempt = 0; attempt < 3; attempt++) {
     const proxy = nextProxy();
     const ua    = randomUA();
+    const host  = proxy?.host ?? "direct";
     try {
       const options = {
         headers: {
@@ -94,34 +95,34 @@ async function fetchReddit(url) {
         );
       }
 
-      console.log(`[proxy] req #${reqCounter} → ${proxy?.host ?? "direct"} | ${url.split("?")[0].replace("https://www.reddit.com", "")}`);
+      console.log(`[proxy] req #${reqCounter} → ${host} | ${url.split("?")[0].replace("https://www.reddit.com", "")}`);
 
       const res = await undiciFetch(url, options);
 
       if (res.status === 429) {
-        console.warn(`[proxy] 429 via ${proxy?.host ?? "direct"} (attempt ${attempt + 1}): ${url}`);
+        console.warn(`[proxy] 429 via ${host} (attempt ${attempt + 1}): ${url}`);
         if (attempt < 2) { await new Promise((r) => setTimeout(r, jitter(1000 * (attempt + 1)))); continue; }
-        return { status: 429, data: null };
+        return { status: 429, data: null, proxyHost: host };
       }
       if (res.status >= 500 && attempt < 2) {
         await new Promise((r) => setTimeout(r, jitter(500 * (attempt + 1))));
         continue;
       }
       if (!res.ok) {
-        console.warn(`[proxy] HTTP ${res.status} via ${proxy?.host ?? "direct"}: ${url}`);
+        console.warn(`[proxy] HTTP ${res.status} via ${host}: ${url}`);
         if (attempt < 2) continue;
-        return { status: res.status, data: null };
+        return { status: res.status, data: null, proxyHost: host };
       }
 
       const data = await res.json();
-      return { status: 200, data };
+      return { status: 200, data, proxyHost: host };
     } catch (err) {
-      console.error(`[proxy] fetch error (attempt ${attempt + 1}) via ${proxy?.host ?? "direct"}: ${err.message}`);
+      console.error(`[proxy] fetch error (attempt ${attempt + 1}) via ${host}: ${err.message}`);
       if (attempt < 2) { await new Promise((r) => setTimeout(r, jitter(500))); continue; }
-      return { status: 0, data: null };
+      return { status: 0, data: null, proxyHost: host };
     }
   }
-  return { status: 0, data: null };
+  return { status: 0, data: null, proxyHost: "unknown" };
 }
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
@@ -148,11 +149,11 @@ app.get("/r/:sub/new", requireApiKey, async (req, res) => {
   const hit = subredditCache.get(cacheKey);
   if (hit !== undefined) return res.json(hit);
 
-  const { status, data } = await dedupFetch(cacheKey, () =>
+  const { status, data, proxyHost } = await dedupFetch(cacheKey, () =>
     fetchReddit(`https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`)
   );
 
-  if (data) { subredditCache.set(cacheKey, data); return res.json(data); }
+  if (data) { subredditCache.set(cacheKey, data); res.set("X-Proxy-Host", proxyHost); return res.json(data); }
   return res.status(status || 502).json({ error: "Reddit fetch failed" });
 });
 
@@ -164,11 +165,11 @@ app.get("/user/:author/about", requireApiKey, async (req, res) => {
   const hit = karmaCache.get(cacheKey);
   if (hit !== undefined) return res.json(hit);
 
-  const { status, data } = await dedupFetch(cacheKey, () =>
+  const { status, data, proxyHost } = await dedupFetch(cacheKey, () =>
     fetchReddit(`https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`)
   );
 
-  if (data) { karmaCache.set(cacheKey, data); return res.json(data); }
+  if (data) { karmaCache.set(cacheKey, data); res.set("X-Proxy-Host", proxyHost); return res.json(data); }
   return res.status(status || 502).json({ error: "Reddit fetch failed" });
 });
 
@@ -182,13 +183,13 @@ app.get("/search/subreddits", requireApiKey, async (req, res) => {
   const hit = searchCache.get(cacheKey);
   if (hit !== undefined) return res.json(hit);
 
-  const { status, data } = await dedupFetch(cacheKey, () =>
+  const { status, data, proxyHost } = await dedupFetch(cacheKey, () =>
     fetchReddit(
       `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(query)}&limit=6&include_over_18=false&include_profiles=false`
     )
   );
 
-  if (data) { searchCache.set(cacheKey, data); return res.json(data); }
+  if (data) { searchCache.set(cacheKey, data); res.set("X-Proxy-Host", proxyHost); return res.json(data); }
   return res.status(status || 502).json({ error: "Reddit fetch failed" });
 });
 

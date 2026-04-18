@@ -39,18 +39,19 @@ function searchUrl(q: string): string {
 }
 
 // Fetch helper — retries up to 2 times on network/5xx errors, skips on 429
-async function fetchJSON(sub: string): Promise<any | null> {
+async function fetchJSON(sub: string): Promise<{ json: any; proxyHost: string } | null> {
   const url     = subredditUrl(sub);
   const headers = proxyHeaders();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const res = await fetch(url, { headers });
+      const res       = await fetch(url, { headers });
+      const proxyHost = res.headers.get("X-Proxy-Host") ?? proxyBase() ?? "direct";
       if (res.status === 429) return null;
       if (res.status >= 500 && attempt < 2) continue;
       if (!res.ok) return null;
       const json = await res.json();
       if (!json?.data?.children) return null;
-      return json;
+      return { json, proxyHost };
     } catch {
       if (attempt < 2) continue;
       return null;
@@ -276,11 +277,11 @@ export const globalFetch = internalAction({
     // 4. Fetch each subreddit once with jittered delay between requests
     const postsBySub = new Map<string, any[]>();
     for (const sub of batchSubs) {
-      const json = await fetchJSON(sub);
-      if (json) {
-        const posts = json.data?.children?.map((c: any) => c.data) ?? [];
+      const result = await fetchJSON(sub);
+      if (result) {
+        const posts = result.json.data?.children?.map((c: any) => c.data) ?? [];
         postsBySub.set(sub, posts);
-        console.log("[globalFetch] r/" + sub + " →", posts.length, "posts");
+        console.log(`[globalFetch] r/${sub} via ${result.proxyHost} → ${posts.length} posts`);
       } else {
         console.warn("[globalFetch] null response for r/" + sub);
       }
@@ -405,8 +406,10 @@ export const doFetch = internalAction({
 
     for (const sub of subreddits) {
       console.log("[doFetch] fetching r/" + sub);
-      const json = await fetchJSON(sub);
-      if (!json) { console.warn("[doFetch] null response for r/" + sub); continue; }
+      const result = await fetchJSON(sub);
+      if (!result) { console.warn("[doFetch] null response for r/" + sub); continue; }
+      const { json, proxyHost } = result;
+      console.log(`[doFetch] r/${sub} via ${proxyHost}`);
       const children = json.data?.children ?? [];
       console.log("[doFetch] r/" + sub + " →", children.length, "posts");
       for (const child of children) {
