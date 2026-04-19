@@ -62,10 +62,11 @@ export default function AuthModal({ isOpen, onClose }: Props) {
     if (googleLoading) return;
     setError("");
     setGoogleLoading(true);
-    sessionStorage.setItem("googleAuthIntent", intent);
-    try { await signIn("google", { redirectTo: "/dashboard" }); }
+    // Login goes to /auth/verify (checks for new user and rejects if so).
+    // Signup goes directly to /dashboard (new accounts are always welcome).
+    const redirectTo = intent === "login" ? "/auth/verify" : "/dashboard";
+    try { await signIn("google", { redirectTo }); }
     catch (err: any) {
-      sessionStorage.removeItem("googleAuthIntent");
       setError(err?.message ?? "Google sign-in failed.");
       setGoogleLoading(false);
     }
