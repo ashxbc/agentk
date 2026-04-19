@@ -96,7 +96,7 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
   verification: {
-    google: "",
+    google: "osLikFNsOupq2JJVz79jX-MJNSdNjGQVngCnjEt9VPA",
     other: {
       "msvalidate.01": "",
     },
