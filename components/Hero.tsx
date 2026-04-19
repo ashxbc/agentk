@@ -6,7 +6,7 @@ export default function Hero() {
         <span className="text-primary-container brush-underline italic">
           Get alerted
         </span>{" "}
-        instantly.
+        <span className="tracking-normal">instantly.</span>
       </h1>
 
       <p className="text-xl text-secondary max-w-2xl leading-relaxed mb-10">
