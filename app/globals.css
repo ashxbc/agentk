@@ -30,6 +30,11 @@ html {
   transform: rotate(-1deg);
 }
 
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 .creative-gradient {
   background: linear-gradient(135deg, #ff9472 0%, #f2709c 100%);
 }

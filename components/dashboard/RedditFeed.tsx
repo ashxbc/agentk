@@ -288,26 +288,37 @@ function SubredditInput({
   disabled?: boolean;
 }) {
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchSubs = useAction(api.reddit.searchSubreddits);
 
   useEffect(() => {
-    if (value.length < 2) { setSuggestions([]); return; }
+    if (value.length < 2) {
+      setSuggestions([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    setSuggestions([]);
 
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
         const results = await searchSubs({ query: value });
-        if (!cancelled) setSuggestions(results);
-      } catch { setSuggestions([]); }
+        if (!cancelled) { setSuggestions(results); setLoading(false); }
+      } catch {
+        if (!cancelled) { setSuggestions([]); setLoading(false); }
+      }
     }, 300);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [value]);
 
+  const showDrop = value.length >= 2 && (loading || suggestions.length > 0);
   const getRect = () => containerRef.current?.getBoundingClientRect() ?? null;
 
   const dropNode =
-    suggestions.length > 0 && typeof window !== "undefined"
+    showDrop && typeof window !== "undefined"
       ? createPortal(
           (() => {
             const r = getRect();
@@ -324,33 +335,66 @@ function SubredditInput({
                   border: "1px solid rgba(0,0,0,0.08)",
                   borderRadius: "8px",
                   overflow: "hidden",
-                  boxShadow: "none",
                 }}
               >
-                {suggestions.map((s) => (
-                  <div
-                    key={s}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      onAdd(s);
-                      setSuggestions([]);
-                    }}
-                    style={{
-                      padding: "8px 12px",
-                      fontSize: "13px",
-                      color: "#191918",
-                      cursor: "pointer",
-                    }}
-                    onMouseEnter={(e) =>
-                      (e.currentTarget.style.background = "#FDF7EF")
-                    }
-                    onMouseLeave={(e) =>
-                      (e.currentTarget.style.background = "#fff")
-                    }
-                  >
-                    r/{s}
-                  </div>
-                ))}
+                {loading
+                  ? [1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        style={{
+                          padding: "8px 12px",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "8px",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: "22px",
+                            height: "12px",
+                            borderRadius: "4px",
+                            background: "linear-gradient(90deg,#f0ece6 25%,#e8e2da 50%,#f0ece6 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: "skeleton-shimmer 1.2s infinite",
+                          }}
+                        />
+                        <div
+                          style={{
+                            width: `${50 + i * 18}px`,
+                            height: "12px",
+                            borderRadius: "4px",
+                            background: "linear-gradient(90deg,#f0ece6 25%,#e8e2da 50%,#f0ece6 75%)",
+                            backgroundSize: "200% 100%",
+                            animation: `skeleton-shimmer 1.2s ${i * 0.1}s infinite`,
+                          }}
+                        />
+                      </div>
+                    ))
+                  : suggestions.map((s) => (
+                      <div
+                        key={s}
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          onAdd(s);
+                          setSuggestions([]);
+                          setLoading(false);
+                        }}
+                        style={{
+                          padding: "8px 12px",
+                          fontSize: "13px",
+                          color: "#191918",
+                          cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) =>
+                          (e.currentTarget.style.background = "#FDF7EF")
+                        }
+                        onMouseLeave={(e) =>
+                          (e.currentTarget.style.background = "#fff")
+                        }
+                      >
+                        r/{s}
+                      </div>
+                    ))}
               </div>
             );
           })(),
