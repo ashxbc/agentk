@@ -7,32 +7,43 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 
 // Invisible component — renders nothing.
-// When a Google login attempt lands on the home page, silently checks whether
-// the Google account has an existing AgentK account. If not, deletes the
-// auto-created account, signs out, and reloads the landing page with the
-// sign-in modal open and an error message. If yes, redirects to the dashboard.
+// Handles two post-Google-OAuth flows on the landing page:
+//
+// googleLoginPending: user tried to log in via Google. If no existing account,
+//   deletes the auto-created one, signs out, reloads with modal + error.
+//   If account exists, goes to dashboard.
+//
+// googleSignupPending: user signed up via Google. Once authenticated,
+//   redirects straight to dashboard. Bypasses relying on OAuth redirectTo
+//   which breaks when CONVEX_SITE_URL differs from the current domain.
 export default function GoogleLoginChecker() {
   const router = useRouter();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signOut } = useAuthActions();
-  const [pending, setPending] = useState(false);
+  const [loginPending, setLoginPending] = useState(false);
+  const [signupPending, setSignupPending] = useState(false);
   const [nowTs] = useState(() => Date.now());
   const deleteAccount = useMutation(api.users.deleteAccount);
 
   useEffect(() => {
     if (sessionStorage.getItem("googleLoginPending") === "1") {
       sessionStorage.removeItem("googleLoginPending");
-      setPending(true);
+      setLoginPending(true);
+    }
+    if (sessionStorage.getItem("googleSignupPending") === "1") {
+      sessionStorage.removeItem("googleSignupPending");
+      setSignupPending(true);
     }
   }, []);
 
   const isNewGoogleUser = useQuery(
     api.users.isNewGoogleUser,
-    pending && isAuthenticated ? { now: nowTs } : "skip",
+    loginPending && isAuthenticated ? { now: nowTs } : "skip",
   );
 
+  // Handle login check
   useEffect(() => {
-    if (!pending || isLoading || !isAuthenticated || isNewGoogleUser === undefined) return;
+    if (!loginPending || isLoading || !isAuthenticated || isNewGoogleUser === undefined) return;
 
     if (isNewGoogleUser) {
       deleteAccount()
@@ -49,7 +60,15 @@ export default function GoogleLoginChecker() {
     } else {
       router.replace("/dashboard");
     }
-  }, [pending, isLoading, isAuthenticated, isNewGoogleUser]);
+  }, [loginPending, isLoading, isAuthenticated, isNewGoogleUser]);
+
+  // Handle signup — once auth resolves, go to dashboard
+  useEffect(() => {
+    if (!signupPending || isLoading) return;
+    if (isAuthenticated) {
+      router.replace("/dashboard");
+    }
+  }, [signupPending, isLoading, isAuthenticated]);
 
   return null;
 }

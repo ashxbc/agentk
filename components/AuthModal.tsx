@@ -62,9 +62,15 @@ export default function AuthModal({ isOpen, onClose }: Props) {
     if (googleLoading) return;
     setError("");
     setGoogleLoading(true);
-    const redirectTo = intent === "login" ? "/auth/verify" : "/dashboard";
-    try { await signIn("google", { redirectTo }); }
+    if (intent === "login") {
+      sessionStorage.setItem("googleLoginPending", "1");
+    } else {
+      sessionStorage.setItem("googleSignupPending", "1");
+    }
+    try { await signIn("google", { redirectTo: "/" }); }
     catch (err: any) {
+      sessionStorage.removeItem("googleLoginPending");
+      sessionStorage.removeItem("googleSignupPending");
       setError(err?.message ?? "Google sign-in failed.");
       setGoogleLoading(false);
     }
