@@ -5,6 +5,7 @@ import Image from "next/image";
 import logo from "@/app/logo.png";
 import { useConvexAuth, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import AuthModal from "@/components/AuthModal";
 
@@ -19,14 +20,15 @@ export default function Navbar() {
   const email   = user?.email ?? "";
   const initial = email.charAt(0).toUpperCase();
 
+  const searchParams = useSearchParams();
+
   // Auto-open auth modal when ?openLogin=true is in the URL.
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("openLogin") === "true") {
+    if (searchParams.get("openLogin") === "true") {
       setAuthOpen(true);
       window.history.replaceState({}, "", window.location.pathname);
     }
-  }, []);
+  }, [searchParams]);
 
   // Close dropdown on outside click.
   useEffect(() => {
