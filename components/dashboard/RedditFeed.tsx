@@ -185,7 +185,7 @@ function TagBox({
         value={val}
         onChange={(e) => setVal(e.target.value)}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          if (e.key === "Enter" || e.keyCode === 13) {
             e.preventDefault();
             const t = val.trim();
             if (t) {
@@ -194,7 +194,15 @@ function TagBox({
             }
           }
         }}
+        onBlur={() => {
+          const t = val.trim();
+          if (t) {
+            onAdd(t);
+            setVal("");
+          }
+        }}
         placeholder={placeholder}
+        enterKeyHint="done"
         style={{
           flex: 1,
           minWidth: "80px",
