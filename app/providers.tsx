@@ -12,7 +12,7 @@ console.log("[Providers] Convex URL:", process.env.NEXT_PUBLIC_CONVEX_URL);
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ConvexAuthNextjsProvider client={convex} verbose>
+    <ConvexAuthNextjsProvider client={convex}>
       {children}
     </ConvexAuthNextjsProvider>
   );
