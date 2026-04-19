@@ -36,7 +36,7 @@ export default function AuthVerifyPage() {
             "authError",
             "No account found for this Google account. Please sign up first.",
           );
-          signOut().then(() => router.replace("/?openLogin=true"));
+          signOut().then(() => { window.location.href = "/?openLogin=true"; });
         });
     } else {
       router.replace("/dashboard");
