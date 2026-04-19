@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "Dashboard — AgentK",
+  title: "Dashboard | AgentK",
 };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {

@@ -29,7 +29,7 @@ const SITE_DESCRIPTION =
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "AgentK — Real-Time Reddit Keyword Monitoring & Alerts",
+    default: "AgentK | Real-Time Reddit Keyword Monitoring & Alerts",
     template: "%s | AgentK",
   },
   description: SITE_DESCRIPTION,
@@ -69,7 +69,7 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "AgentK — Real-Time Reddit Keyword Monitoring & Alerts",
+    title: "AgentK | Real-Time Reddit Keyword Monitoring & Alerts",
     description: SITE_DESCRIPTION,
     images: [
       {
@@ -82,7 +82,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "AgentK — Real-Time Reddit Keyword Monitoring & Alerts",
+    title: "AgentK | Real-Time Reddit Keyword Monitoring & Alerts",
     description: SITE_DESCRIPTION,
     images: [`${SITE_URL}/og-image.png`],
     creator: "@agentk",
