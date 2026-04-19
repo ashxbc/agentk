@@ -10,6 +10,7 @@
 
 import type * as agentTokens from "../agentTokens.js";
 import type * as auth from "../auth.js";
+import type * as clearAuthData from "../clearAuthData.js";
 import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as discord from "../discord.js";
@@ -28,6 +29,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   agentTokens: typeof agentTokens;
   auth: typeof auth;
+  clearAuthData: typeof clearAuthData;
   crons: typeof crons;
   devices: typeof devices;
   discord: typeof discord;
