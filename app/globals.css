@@ -22,12 +22,13 @@ html {
   position: absolute;
   bottom: 0.1em;
   left: -0.1em;
-  right: -0.1em;
+  right: 0;
   height: 0.3em;
   background: rgba(223, 132, 157, 0.2);
   z-index: -1;
   border-radius: 100% 10% 80% 5% / 10% 10% 90% 90%;
   transform: rotate(-1deg);
+  overflow: hidden;
 }
 
 .creative-gradient {

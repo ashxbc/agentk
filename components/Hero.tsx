@@ -5,8 +5,8 @@ export default function Hero() {
         Monitor Reddit.{" "}
         <span className="text-primary-container brush-underline italic">
           Get alerted
-        </span>{" "}
-        <span className="tracking-normal">instantly.</span>
+        </span>
+        <span className="tracking-normal">&nbsp;&nbsp;instantly.</span>
       </h1>
 
       <p className="text-xl text-secondary max-w-2xl leading-relaxed mb-10">

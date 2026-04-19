@@ -30,8 +30,8 @@ export default function Footer() {
         {/* Links */}
         <div className="flex items-center gap-6">
           {[
-            { label: "Privacy Policy", href: "#" },
-            { label: "Terms of Service", href: "#" },
+            { label: "Privacy Policy", href: "/privacy" },
+            { label: "Terms of Service", href: "/terms" },
           ].map(({ label, href }) => (
             <a
               key={label}
