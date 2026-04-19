@@ -35,15 +35,15 @@ export const getAuthProvider = query({
 
 // Returns true if the current user was created via Google OAuth within the last 90 seconds.
 // Used by the dashboard to detect a brand-new Google account created from the login form.
+// `now` must be passed from the client (Date.now() is not deterministic in Convex queries).
 export const isNewGoogleUser = query({
-  args: {},
-  handler: async (ctx) => {
+  args: { now: v.number() },
+  handler: async (ctx, { now }) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return false;
     const user = await ctx.db.get(userId);
     if (!user) return false;
-    const createdRecently = Date.now() - user._creationTime < 90_000;
-    if (!createdRecently) return false;
+    if (now - user._creationTime >= 90_000) return false;
     const account = await ctx.db
       .query("authAccounts")
       .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))

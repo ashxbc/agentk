@@ -20,9 +20,10 @@ export default function DashboardPage() {
   const posts            = useQuery(api.reddit.getResults);
   const registerDevice   = useMutation(api.devices.registerDevice);
   const deleteAccount    = useMutation(api.users.deleteAccount);
+  const [nowTs] = useState(() => Date.now());
   const isNewGoogleUser  = useQuery(
     api.users.isNewGoogleUser,
-    isAuthenticated ? {} : "skip",
+    isAuthenticated ? { now: nowTs } : "skip",
   );
 
   useEffect(() => {
