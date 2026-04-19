@@ -1,0 +1,51 @@
+# AgentK
+
+> Real-time Reddit keyword monitoring and alert tool. AgentK scans any subreddit every 2 minutes and fires instant Telegram and Discord alerts the moment a post matching your keywords goes live.
+
+## What AgentK Does
+
+AgentK is a Reddit monitoring service that tracks keywords across subreddits 24/7. When a matching post is detected, users receive an immediate push notification via Telegram or Discord — typically within 3 minutes of the post being published.
+
+## Key Features
+
+- **Real-time Reddit monitoring**: Scans subreddits every 2 minutes, continuously
+- **Instant alerts**: Telegram and Discord notifications with post title, author, upvotes, comments, and direct link
+- **50 keywords** per account, **5 subreddits** per account
+- **Filters**: Minimum upvotes, minimum comments, minimum author karma, hourly alert cap
+- **Completely free**: No credit card, no usage limits, no trial period
+
+## Use Cases
+
+- Founders monitoring competitor brand mentions on Reddit
+- Sales teams catching "looking for a tool like X" buying-intent posts
+- Marketers tracking brand sentiment and product discussions
+- Recruiters finding job-seeking posts in professional subreddits
+- Investors tracking industry trends and startup discussions
+- Community managers staying on top of their product name
+
+## How It Works
+
+1. Create a free account (Google OAuth or email/password)
+2. Enter keywords to track (e.g., "Reddit monitoring", "Telegram alerts", competitor names)
+3. Select subreddits to watch (e.g., r/entrepreneur, r/SaaS, r/startups)
+4. Connect Telegram bot or Discord server
+5. AgentK monitors 24/7 and delivers alerts instantly
+
+## Pricing
+
+Free forever. No paid plans. No credit card required.
+
+## Company
+
+- Website: https://agentk-delta.vercel.app
+- Support: support@agentk.io
+- Privacy Policy: https://agentk-delta.vercel.app/privacy
+- Terms of Service: https://agentk-delta.vercel.app/terms
+
+## Technical Stack
+
+- Frontend: Next.js (React), deployed on Vercel
+- Backend: Convex (real-time database and serverless functions)
+- Auth: Convex Auth with Google OAuth and email/password
+- Notifications: Telegram Bot API, Discord Bot API
+- Data source: Reddit public API

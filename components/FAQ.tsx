@@ -4,28 +4,44 @@ import { useState } from "react";
 
 const FAQS = [
   {
-    q: "How does AgentK find relevant posts?",
-    a: "You set keywords and subreddits. AgentK scans them every 2 minutes and fires a Telegram alert the moment a matching post goes live. No delays, no manual checking.",
+    q: "What is AgentK and how does Reddit monitoring work?",
+    a: "AgentK is a real-time Reddit monitoring tool that scans any subreddit every 2 minutes for posts matching your keywords. The moment a match is detected, you receive an instant alert via Telegram or Discord — no manual checking, no delays. Simply set your keywords, choose your subreddits, and AgentK runs 24/7 in the background.",
   },
   {
-    q: "What platforms does it monitor?",
-    a: "Reddit. You can track any subreddit, set keyword filters, minimum upvotes, and minimum comments. Telegram is used for real-time alerts.",
+    q: "How fast are the Reddit keyword alerts?",
+    a: "AgentK polls Reddit every 2 minutes around the clock. When a new post matches your tracked keywords, the alert fires within seconds of detection — typically under 3 minutes from the moment the post goes live. This makes it one of the fastest Reddit monitoring solutions available, far quicker than manual RSS feeds or third-party digest services.",
   },
   {
-    q: "Is there really no limit on keywords or subreddits?",
-    a: "None. Add as many keywords and subreddits as you want. AgentK fetches them all on every cycle.",
+    q: "Which notification channels does AgentK support?",
+    a: "AgentK delivers alerts via Telegram and Discord. Connect your Telegram account or Discord server from the dashboard in one step — no code required. Each alert includes the post title, subreddit, author, upvote count, comment count, and a direct link to the post so you can act instantly.",
   },
   {
-    q: "How do Telegram alerts work?",
-    a: "Connect your Telegram account from the dashboard in one step. Every time a new matching post is found, you get an instant message with the post title, subreddit, upvotes, and a direct link.",
+    q: "How many keywords and subreddits can I track?",
+    a: "You can track up to 50 keywords and 5 subreddits simultaneously on the free plan. There is no limit on the number of alerts you receive. Keywords are matched case-insensitively against post titles and bodies, so broad terms like 'SaaS tool' and precise phrases like 'looking for Reddit monitoring' both work effectively.",
   },
   {
-    q: "Is my data private?",
-    a: "Yes. Your keywords and settings are stored securely and never shared or sold. AgentK doesn't post anything on your behalf.",
+    q: "Can I filter alerts by upvotes, comments, or author karma?",
+    a: "Yes. AgentK includes granular filters so you only get alerted on posts that matter. You can set minimum upvote thresholds, minimum comment counts, and minimum author karma. You can also cap the maximum number of alerts per hour using the /cap command in the settings panel, preventing notification fatigue during high-volume periods.",
   },
   {
-    q: "Will it stay free?",
-    a: "Yes. AgentK is free with no usage caps. If paid plans are ever introduced, existing users will be grandfathered.",
+    q: "Is AgentK free? Are there hidden costs?",
+    a: "AgentK is completely free to use with no credit card required. There are no hidden fees, rate limits, or trial periods. The free plan includes 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, and all filtering features. If paid tiers are introduced in the future, existing users will be grandfathered into the free plan.",
+  },
+  {
+    q: "What are the best use cases for Reddit keyword monitoring?",
+    a: "AgentK is used by founders tracking competitor mentions, sales teams catching 'looking for a tool like X' posts, marketers monitoring brand sentiment, recruiters finding job-seeking posts, investors tracking industry discussions, and community managers staying on top of their brand name. Any use case that benefits from knowing the moment a topic surfaces on Reddit is a perfect fit.",
+  },
+  {
+    q: "How is AgentK different from Reddit's own notification system?",
+    a: "Reddit's native notifications only alert you to activity on posts you've already interacted with. AgentK proactively scans any subreddit for any keyword, including posts from complete strangers, giving you first-mover advantage to comment, DM, or engage before anyone else. It also aggregates multiple subreddits and keywords into a single, unified alert stream.",
+  },
+  {
+    q: "Is my data private and secure?",
+    a: "Yes. Your keywords, subreddit list, and account data are stored securely on Convex infrastructure with encrypted transmission (TLS) and hashed authentication. AgentK never posts on your behalf, never accesses your Reddit account, and never shares or sells your data to third parties. See our Privacy Policy for full details.",
+  },
+  {
+    q: "How do I get started with Reddit monitoring?",
+    a: "Getting started takes under 2 minutes. Create a free account using Google or email, open the dashboard, enter your keywords, select your subreddits, and connect your Telegram bot or Discord server. AgentK begins monitoring immediately — no setup calls, no onboarding forms, no waiting period.",
   },
 ];
 
@@ -75,7 +91,7 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="w-full relative py-40 overflow-hidden" id="faq" aria-label="Frequently asked questions" style={{ backgroundColor: "#FDF7EF" }}>
+    <section className="w-full relative py-40 overflow-hidden" id="faq" aria-label="Frequently asked questions about AgentK Reddit monitoring" style={{ backgroundColor: "#FDF7EF" }}>
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         <div className="flex flex-col md:flex-row gap-20 md:gap-32">
 
@@ -84,7 +100,7 @@ export default function FAQ() {
               Questions worth <span className="text-[#DF849D] italic">asking.</span>
             </h2>
             <p className="text-lg font-medium leading-relaxed" style={{ color: "#3D3A36" }}>
-              Everything you need to know before you start.
+              Everything you need to know about Reddit monitoring, keyword alerts, and how AgentK works.
             </p>
           </div>
 

@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-export const metadata = {
-  title: "Terms of Service — AgentK",
-  description: "The terms and conditions governing your use of AgentK.",
+export const metadata: Metadata = {
+  title: "Terms of Service",
+  description: "The terms and conditions governing your use of AgentK's Reddit monitoring and keyword alert service.",
+  alternates: { canonical: "https://agentk-delta.vercel.app/terms" },
+  robots: { index: true, follow: true },
 };
 
 export default function TermsOfService() {

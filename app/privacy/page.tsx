@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
-export const metadata = {
-  title: "Privacy Policy — AgentK",
-  description: "How AgentK collects, uses, and protects your personal information.",
+export const metadata: Metadata = {
+  title: "Privacy Policy",
+  description: "How AgentK collects, uses, and protects your personal information when you use our Reddit monitoring and alert service.",
+  alternates: { canonical: "https://agentk-delta.vercel.app/privacy" },
+  robots: { index: true, follow: true },
 };
 
 export default function PrivacyPolicy() {
