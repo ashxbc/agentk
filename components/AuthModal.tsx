@@ -52,19 +52,8 @@ export default function AuthModal({ isOpen, onClose }: Props) {
     if (googleLoading) return;
     setError("");
     setGoogleLoading(true);
-    console.log("[Auth] Starting Google sign-in...");
-    console.log("[Auth] NEXT_PUBLIC_CONVEX_URL:", process.env.NEXT_PUBLIC_CONVEX_URL);
-    try {
-      console.log("[Auth] Calling signIn('google', { redirectTo: '/dashboard' })");
-      const result = await signIn("google", { redirectTo: "/dashboard" });
-      console.log("[Auth] signIn result:", result);
-    } catch (err: any) {
-      console.error("[Auth] Google sign-in error:", err);
-      console.error("[Auth] Error message:", err?.message);
-      console.error("[Auth] Error stack:", err?.stack);
-      setError(err?.message ?? "Google sign-in failed.");
-      setGoogleLoading(false);
-    }
+    try { await signIn("google", { redirectTo: "/dashboard" }); }
+    catch (err: any) { setError(err?.message ?? "Google sign-in failed."); setGoogleLoading(false); }
   }
 
   async function handleLogin() {
