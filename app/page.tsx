@@ -5,6 +5,7 @@ import SocialProofFlow from "@/components/SocialProofFlow";
 import Pricing from "@/components/Pricing";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
+import GoogleLoginChecker from "@/components/GoogleLoginChecker";
 
 const SITE_URL = "https://agentk-delta.vercel.app";
 
@@ -102,6 +103,7 @@ const faqSchema = {
 export default function Home() {
   return (
     <>
+      <GoogleLoginChecker />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
