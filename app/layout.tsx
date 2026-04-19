@@ -21,7 +21,7 @@ const dancingScript = Dancing_Script({
   variable: "--font-cursive",
 });
 
-const SITE_URL = "https://agentk-delta.vercel.app";
+const SITE_URL = "https://tryagentk.com";
 const SITE_NAME = "AgentK";
 const SITE_DESCRIPTION =
   "AgentK monitors Reddit 24/7 for your keywords and fires instant Telegram and Discord alerts the moment a matching post goes live. Free Reddit keyword monitoring tool — no credit card required.";

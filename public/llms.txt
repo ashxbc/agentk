@@ -37,10 +37,10 @@ Free forever. No paid plans. No credit card required.
 
 ## Company
 
-- Website: https://agentk-delta.vercel.app
+- Website: https://tryagentk.com
 - Support: support@agentk.io
-- Privacy Policy: https://agentk-delta.vercel.app/privacy
-- Terms of Service: https://agentk-delta.vercel.app/terms
+- Privacy Policy: https://tryagentk.com/privacy
+- Terms of Service: https://tryagentk.com/terms
 
 ## Technical Stack
 

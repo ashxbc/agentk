@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "Terms of Service",
   description: "The terms and conditions governing your use of AgentK's Reddit monitoring and keyword alert service.",
-  alternates: { canonical: "https://agentk-delta.vercel.app/terms" },
+  alternates: { canonical: "https://tryagentk.com/terms" },
   robots: { index: true, follow: true },
 };
 

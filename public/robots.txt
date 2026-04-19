@@ -34,4 +34,4 @@ Allow: /
 User-agent: BraveBot
 Allow: /
 
-Sitemap: https://agentk-delta.vercel.app/sitemap.xml
+Sitemap: https://tryagentk.com/sitemap.xml

@@ -6,7 +6,7 @@ import Pricing from "@/components/Pricing";
 import FAQ from "@/components/FAQ";
 import Footer from "@/components/Footer";
 
-const SITE_URL = "https://agentk-delta.vercel.app";
+const SITE_URL = "https://tryagentk.com";
 
 export const metadata: Metadata = {
   alternates: { canonical: SITE_URL },

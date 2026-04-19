@@ -5,21 +5,21 @@
         http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
 
   <url>
-    <loc>https://agentk-delta.vercel.app/</loc>
+    <loc>https://tryagentk.com/</loc>
     <lastmod>2026-04-19</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
 
   <url>
-    <loc>https://agentk-delta.vercel.app/privacy</loc>
+    <loc>https://tryagentk.com/privacy</loc>
     <lastmod>2026-04-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
 
   <url>
-    <loc>https://agentk-delta.vercel.app/terms</loc>
+    <loc>https://tryagentk.com/terms</loc>
     <lastmod>2026-04-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>

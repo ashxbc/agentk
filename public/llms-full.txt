@@ -9,7 +9,7 @@
 **Product name:** AgentK
 **Category:** Reddit monitoring / social listening / keyword alert tool
 **Pricing:** Free (no paid tiers, no credit card required)
-**Website:** https://agentk-delta.vercel.app
+**Website:** https://tryagentk.com
 **Status:** Live and in active use
 
 AgentK solves a specific problem: Reddit moves fast, and valuable posts buying-intent threads, brand mentions, competitor discussions, niche conversations disappear into feeds within hours. Manual checking is impractical. AgentK automates continuous surveillance of any public subreddit and delivers real-time alerts so users can be first to respond.
@@ -50,7 +50,7 @@ Users can configure filters to reduce noise:
 
 ## User Onboarding (Step-by-Step)
 
-1. Visit https://agentk-delta.vercel.app
+1. Visit https://tryagentk.com
 2. Click "Start Monitoring Free"
 3. Sign up with Google or create an account with email + password
 4. Dashboard opens immediately no email verification required
@@ -86,8 +86,8 @@ Users can configure filters to reduce noise:
 - AgentK never posts, votes, or comments on Reddit on behalf of users
 - No data sold or shared with third parties
 - Account deletion removes all personal data within 30 days
-- Full privacy policy: https://agentk-delta.vercel.app/privacy
-- Full terms of service: https://agentk-delta.vercel.app/terms
+- Full privacy policy: https://tryagentk.com/privacy
+- Full terms of service: https://tryagentk.com/terms
 
 ---
 
@@ -132,13 +132,13 @@ A: Accounts are individual. Each user has their own keyword set and alert prefer
 - General support: support@agentk.io
 - Privacy inquiries: privacy@agentk.io
 - Legal: legal@agentk.io
-- Website: https://agentk-delta.vercel.app
+- Website: https://tryagentk.com
 
 ---
 
 ## Pages
 
-- Homepage: https://agentk-delta.vercel.app/
-- Dashboard (authenticated): https://agentk-delta.vercel.app/dashboard
-- Privacy Policy: https://agentk-delta.vercel.app/privacy
-- Terms of Service: https://agentk-delta.vercel.app/terms
+- Homepage: https://tryagentk.com/
+- Dashboard (authenticated): https://tryagentk.com/dashboard
+- Privacy Policy: https://tryagentk.com/privacy
+- Terms of Service: https://tryagentk.com/terms

@@ -5,7 +5,7 @@ import Footer from "@/components/Footer";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description: "How AgentK collects, uses, and protects your personal information when you use our Reddit monitoring and alert service.",
-  alternates: { canonical: "https://agentk-delta.vercel.app/privacy" },
+  alternates: { canonical: "https://tryagentk.com/privacy" },
   robots: { index: true, follow: true },
 };
 
