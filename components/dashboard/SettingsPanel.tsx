@@ -13,7 +13,7 @@ interface Props {
 
 type Msg = { from: "bot" | "user"; html?: string; text?: string };
 
-const COMMANDS = ["/email", "/account", "/token", "/cap", "/removecap", "/delete"] as const;
+const COMMANDS = ["/email", "/account", "/token", "/cap", "/delete"] as const;
 
 export default function SettingsPanel({ open }: Props) {
   const { signOut }    = useAuthActions();
@@ -145,11 +145,6 @@ export default function SettingsPanel({ open }: Props) {
           );
         }).catch(() => addBot(`Something went wrong. Please try again.`));
 
-      } else if (cmd === "/removecap") {
-        setAlertCap({ alertsPerHour: undefined }).then(() => {
-          addBot(`Alert cap removed. You'll receive all alerts without limit.`);
-        }).catch(() => addBot(`Something went wrong. Please try again.`));
-
       } else if (cmd === "/delete") {
         addBot(
           `⚠️ <strong>This will permanently delete your account and all data.</strong><br><br>` +
@@ -165,7 +160,7 @@ export default function SettingsPanel({ open }: Props) {
         });
 
       } else {
-        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap</b>, <b>/removecap</b>, or <b>/delete</b>.`);
+        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap</b>, or <b>/delete</b>.`);
       }
     }, 250);
   }
@@ -220,9 +215,8 @@ export default function SettingsPanel({ open }: Props) {
                 ["/email",     "Email & auth status"],
                 ["/account",   "View or rename"],
                 ["/token",     "Your alert token"],
-                ["/cap",       "Set alert cap"],
-                ["/removecap", "Remove alert cap"],
-                ["/delete",    "Delete account"],
+                ["/cap",    "Set alert cap"],
+                ["/delete", "Delete account"],
               ].map(([cmd, desc]) => (
                 <button key={cmd} onClick={() => { setMenuOpen(false); setInput(""); dispatch(cmd); }}
                   style={{ display: "flex", flexDirection: "column", padding: "8px 10px", borderRadius: "8px", cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", textAlign: "left" }}
