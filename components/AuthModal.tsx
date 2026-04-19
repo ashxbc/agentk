@@ -31,6 +31,16 @@ export default function AuthModal({ isOpen, onClose }: Props) {
   const [loading, setLoading]         = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // When the modal opens, check if the dashboard left an auth error in sessionStorage.
+  useEffect(() => {
+    if (!isOpen) return;
+    const pending = sessionStorage.getItem("authError");
+    if (pending) {
+      setError(pending);
+      sessionStorage.removeItem("authError");
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   function reset() {
@@ -48,12 +58,17 @@ export default function AuthModal({ isOpen, onClose }: Props) {
     onClose();
   }
 
-  async function handleGoogle() {
+  async function handleGoogle(intent: "login" | "signup") {
     if (googleLoading) return;
     setError("");
     setGoogleLoading(true);
+    sessionStorage.setItem("googleAuthIntent", intent);
     try { await signIn("google", { redirectTo: "/dashboard" }); }
-    catch (err: any) { setError(err?.message ?? "Google sign-in failed."); setGoogleLoading(false); }
+    catch (err: any) {
+      sessionStorage.removeItem("googleAuthIntent");
+      setError(err?.message ?? "Google sign-in failed.");
+      setGoogleLoading(false);
+    }
   }
 
   async function handleLogin() {
@@ -69,7 +84,12 @@ export default function AuthModal({ isOpen, onClose }: Props) {
       window.location.href = "/dashboard";
       handleClose();
     } catch (err: any) {
-      setError(err?.message ?? "Invalid credentials.");
+      const msg = err?.message ?? "";
+      if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("no account")) {
+        setError("Account does not exist. Please use the correct credentials or sign up.");
+      } else {
+        setError(msg || "Invalid credentials.");
+      }
     } finally {
       setLoading(false);
     }
@@ -155,7 +175,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
             <h2 className="text-xl font-extrabold tracking-tight text-[#191918] mb-1">Welcome back</h2>
             <p className="text-sm text-[#B2A28C] font-medium mb-6">Sign in to your AgentK account</p>
 
-            <button onClick={handleGoogle} disabled={googleLoading} className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl border border-black/10 bg-white text-sm font-semibold text-[#191918] hover:bg-[#fafafa] transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={() => handleGoogle("login")} disabled={googleLoading} className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl border border-black/10 bg-white text-sm font-semibold text-[#191918] hover:bg-[#fafafa] transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed">
               {GOOGLE_ICON} {googleLoading ? "Redirecting…" : "Continue with Google"}
             </button>
 
@@ -196,7 +216,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
             <h2 className="text-xl font-extrabold tracking-tight text-[#191918] mb-1">Create account</h2>
             <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 1 of 3 — your email</p>
 
-            <button onClick={handleGoogle} disabled={googleLoading} className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl border border-black/10 bg-white text-sm font-semibold text-[#191918] hover:bg-[#fafafa] transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed">
+            <button onClick={() => handleGoogle("signup")} disabled={googleLoading} className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl border border-black/10 bg-white text-sm font-semibold text-[#191918] hover:bg-[#fafafa] transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed">
               {GOOGLE_ICON} {googleLoading ? "Redirecting…" : "Continue with Google"}
             </button>
 

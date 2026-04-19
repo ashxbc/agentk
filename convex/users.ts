@@ -33,6 +33,25 @@ export const getAuthProvider = query({
   },
 });
 
+// Returns true if the current user was created via Google OAuth within the last 90 seconds.
+// Used by the dashboard to detect a brand-new Google account created from the login form.
+export const isNewGoogleUser = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return false;
+    const user = await ctx.db.get(userId);
+    if (!user) return false;
+    const createdRecently = Date.now() - user._creationTime < 90_000;
+    if (!createdRecently) return false;
+    const account = await ctx.db
+      .query("authAccounts")
+      .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
+      .first();
+    return account?.provider === "google";
+  },
+});
+
 export const updateName = mutation({
   args: { name: v.string() },
   handler: async (ctx, { name }) => {

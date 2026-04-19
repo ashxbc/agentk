@@ -16,15 +16,35 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { signOut }   = useAuthActions();
-  const posts         = useQuery(api.reddit.getResults);
-  const registerDevice = useMutation(api.devices.registerDevice);
+  const { signOut }      = useAuthActions();
+  const posts            = useQuery(api.reddit.getResults);
+  const registerDevice   = useMutation(api.devices.registerDevice);
+  const deleteAccount    = useMutation(api.users.deleteAccount);
+  const isNewGoogleUser  = useQuery(
+    api.users.isNewGoogleUser,
+    isAuthenticated ? {} : "skip",
+  );
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.replace("/");
+      return;
     }
-    if (!authLoading && isAuthenticated) {
+    if (!authLoading && isAuthenticated && isNewGoogleUser !== undefined) {
+      const intent = sessionStorage.getItem("googleAuthIntent");
+      sessionStorage.removeItem("googleAuthIntent");
+
+      if (isNewGoogleUser && intent === "login") {
+        // New account accidentally created from the login form — purge and redirect.
+        deleteAccount()
+          .catch(() => {})
+          .finally(() => {
+            sessionStorage.setItem("authError", "No account found for this Google account. Please sign up first.");
+            signOut().then(() => router.replace("/?openLogin=true"));
+          });
+        return;
+      }
+
       // Device registration + IP dedup check
       fetch("/api/device-ip")
         .then((r) => r.json())
@@ -37,7 +57,7 @@ export default function DashboardPage() {
           }
         });
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, isNewGoogleUser, router]);
 
   if (authLoading || !isAuthenticated) {
     return (
