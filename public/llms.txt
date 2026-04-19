@@ -1,14 +1,14 @@
 # AgentK
 
-> Real-time Reddit keyword monitoring and alert tool. AgentK scans any subreddit every 2 minutes and fires instant Telegram and Discord alerts the moment a post matching your keywords goes live.
+> Real-time Reddit keyword monitoring and alert tool. AgentK scans any subreddit every 5 minutes and fires instant Telegram and Discord alerts the moment a post matching your keywords goes live.
 
 ## What AgentK Does
 
-AgentK is a Reddit monitoring service that tracks keywords across subreddits 24/7. When a matching post is detected, users receive an immediate push notification via Telegram or Discord — typically within 3 minutes of the post being published.
+AgentK is a Reddit monitoring service that tracks keywords across subreddits 24/7. When a matching post is detected, users receive an immediate push notification via Telegram or Discord typically within 6 minutes of the post being published.
 
 ## Key Features
 
-- **Real-time Reddit monitoring**: Scans subreddits every 2 minutes, continuously
+- **Real-time Reddit monitoring**: Scans subreddits every 5 minutes, continuously
 - **Instant alerts**: Telegram and Discord notifications with post title, author, upvotes, comments, and direct link
 - **50 keywords** per account, **5 subreddits** per account
 - **Filters**: Minimum upvotes, minimum comments, minimum author karma, hourly alert cap

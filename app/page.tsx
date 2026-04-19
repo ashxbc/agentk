@@ -21,7 +21,7 @@ const faqSchema = {
       name: "What is AgentK and how does Reddit monitoring work?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK is a real-time Reddit monitoring tool that scans any subreddit every 2 minutes for posts matching your keywords. The moment a match is detected, you receive an instant alert via Telegram or Discord — no manual checking, no delays. Simply set your keywords, choose your subreddits, and AgentK runs 24/7 in the background.",
+        text: "AgentK is a real-time Reddit monitoring tool that scans any subreddit every 5 minutes for posts matching your keywords. The moment a match is detected, you receive an instant alert via Telegram or Discord. No manual checking, no delays. Simply set your keywords, choose your subreddits, and AgentK runs 24/7 in the background.",
       },
     },
     {
@@ -29,7 +29,7 @@ const faqSchema = {
       name: "How fast are the Reddit keyword alerts?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK polls Reddit every 2 minutes around the clock. When a new post matches your tracked keywords, the alert fires within seconds of detection — typically under 3 minutes from the moment the post goes live.",
+        text: "AgentK polls Reddit every 5 minutes around the clock. When a new post matches your tracked keywords, the alert fires within seconds of detection, typically under 6 minutes from the moment the post goes live.",
       },
     },
     {
@@ -37,7 +37,7 @@ const faqSchema = {
       name: "Which notification channels does AgentK support?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK delivers alerts via Telegram and Discord. Connect your Telegram account or Discord server from the dashboard in one step — no code required. Each alert includes the post title, subreddit, author, upvote count, comment count, and a direct link to the post.",
+        text: "AgentK delivers alerts via Telegram and Discord. Connect your Telegram account or Discord server from the dashboard in one step, no code required. Each alert includes the post title, subreddit, author, upvote count, comment count, and a direct link to the post.",
       },
     },
     {
@@ -93,7 +93,7 @@ const faqSchema = {
       name: "How do I get started with Reddit monitoring?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Getting started takes under 2 minutes. Create a free account using Google or email, open the dashboard, enter your keywords, select your subreddits, and connect your Telegram bot or Discord server. AgentK begins monitoring immediately — no setup calls, no onboarding forms, no waiting period.",
+        text: "Getting started takes under 2 minutes. Create a free account using Google or email, open the dashboard, enter your keywords, select your subreddits, and connect your Telegram bot or Discord server. AgentK begins monitoring immediately. No setup calls, no onboarding forms, no waiting period.",
       },
     },
   ],
