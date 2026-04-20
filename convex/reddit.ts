@@ -20,8 +20,8 @@ function proxyHeaders(): Record<string, string> {
 function subredditUrl(sub: string): string {
   const base = proxyBase();
   return base
-    ? `${base}/r/${encodeURIComponent(sub)}/new?limit=50`
-    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=50`;
+    ? `${base}/r/${encodeURIComponent(sub)}/new`
+    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`;
 }
 
 function karmaUrl(author: string): string {
@@ -181,7 +181,7 @@ export const upsertResults = internalMutation({
 
 // ── Karma cache ───────────────────────────────────────────────────────────────
 
-const KARMA_CACHE_MS = 24 * 60 * 60 * 1000; // 24-hour karma cache
+const FIVE_MIN_MS = 5 * 60 * 1000;
 
 export const getKarmaCached = internalQuery({
   args: { author: v.string() },
@@ -202,7 +202,7 @@ export const fetchKarma = action({
   args: { author: v.string() },
   handler: async (ctx, { author }): Promise<number | null> => {
     const cached = await ctx.runQuery(internal.reddit.getKarmaCached, { author });
-    if (cached && Date.now() - cached.fetchedAt < KARMA_CACHE_MS) return cached.karma;
+    if (cached && Date.now() - cached.fetchedAt < FIVE_MIN_MS) return cached.karma;
     try {
       const res = await fetch(karmaUrl(author), { headers: proxyHeaders() });
       if (!res.ok) {
