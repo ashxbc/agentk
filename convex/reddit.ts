@@ -20,22 +20,16 @@ function proxyHeaders(): Record<string, string> {
 function subredditUrl(sub: string): string {
   const base = proxyBase();
   return base
-    ? `${base}/r/${encodeURIComponent(sub)}/new`
-    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`;
+    ? `${base}/r/${encodeURIComponent(sub)}/new?limit=50`
+    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=50`;
 }
 
 function karmaUrl(author: string): string {
-  const base = proxyBase();
-  return base
-    ? `${base}/user/${encodeURIComponent(author)}/about`
-    : `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`;
+  return `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`;
 }
 
 function searchUrl(q: string): string {
-  const base = proxyBase();
-  return base
-    ? `${base}/search/subreddits?query=${encodeURIComponent(q)}`
-    : `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`;
+  return `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`;
 }
 
 // Fetch helper — retries up to 2 times on network/5xx errors, skips on 429
@@ -181,7 +175,7 @@ export const upsertResults = internalMutation({
 
 // ── Karma cache ───────────────────────────────────────────────────────────────
 
-const FIVE_MIN_MS = 5 * 60 * 1000;
+const KARMA_CACHE_MS = 24 * 60 * 60 * 1000; // 24-hour karma cache
 
 export const getKarmaCached = internalQuery({
   args: { author: v.string() },
@@ -202,7 +196,7 @@ export const fetchKarma = action({
   args: { author: v.string() },
   handler: async (ctx, { author }): Promise<number | null> => {
     const cached = await ctx.runQuery(internal.reddit.getKarmaCached, { author });
-    if (cached && Date.now() - cached.fetchedAt < FIVE_MIN_MS) return cached.karma;
+    if (cached && Date.now() - cached.fetchedAt < KARMA_CACHE_MS) return cached.karma;
     try {
       const res = await fetch(karmaUrl(author), { headers: proxyHeaders() });
       if (!res.ok) {
