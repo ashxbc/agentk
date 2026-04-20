@@ -25,11 +25,17 @@ function subredditUrl(sub: string): string {
 }
 
 function karmaUrl(author: string): string {
-  return `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`;
+  const base = proxyBase();
+  return base
+    ? `${base}/user/${encodeURIComponent(author)}/about`
+    : `https://www.reddit.com/user/${encodeURIComponent(author)}/about.json`;
 }
 
 function searchUrl(q: string): string {
-  return `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`;
+  const base = proxyBase();
+  return base
+    ? `${base}/search/subreddits?query=${encodeURIComponent(q)}`
+    : `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`;
 }
 
 // Fetch helper — retries up to 2 times on network/5xx errors, skips on 429
