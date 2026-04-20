@@ -20,8 +20,8 @@ function proxyHeaders(): Record<string, string> {
 function subredditUrl(sub: string): string {
   const base = proxyBase();
   return base
-    ? `${base}/r/${encodeURIComponent(sub)}/new`
-    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`;
+    ? `${base}/r/${encodeURIComponent(sub)}/new?limit=50`
+    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=50`;
 }
 
 function karmaUrl(author: string): string {
@@ -181,7 +181,7 @@ export const upsertResults = internalMutation({
 
 // ── Karma cache ───────────────────────────────────────────────────────────────
 
-const FIVE_MIN_MS = 5 * 60 * 1000;
+const FIVE_MIN_MS = 24 * 60 * 60 * 1000;
 
 export const getKarmaCached = internalQuery({
   args: { author: v.string() },
