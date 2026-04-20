@@ -1,3 +1,5 @@
+"use client";
+
 export default function Hero() {
   return (
     <section className="relative flex flex-col items-center text-center px-6 max-w-4xl mx-auto pb-20">
@@ -14,12 +16,12 @@ export default function Hero() {
       </p>
 
       <div className="flex flex-col items-center gap-8 mb-16">
-        <a
-          href="/dashboard"
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent("openAuthModal", { detail: { view: "signup-email" } }))}
           className="creative-gradient text-white px-10 py-5 rounded-lg text-lg font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] transition-transform active:scale-95 inline-block"
         >
           Start Monitoring Free
-        </a>
+        </button>
 
         <div className="flex items-center gap-2 text-sm font-medium text-tertiary">
           <span className="text-primary-container font-bold">Completely free.</span>{" "}

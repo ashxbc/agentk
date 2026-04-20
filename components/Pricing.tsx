@@ -75,18 +75,19 @@ export default function Pricing() {
 
           {/* CTA */}
           <div style={{ padding: "24px 28px 28px" }}>
-            <a
-              href="/dashboard"
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent("openAuthModal", { detail: { view: "signup-email" } }))}
               className="creative-gradient hover:scale-[1.02] active:scale-95 transition-transform"
               style={{
                 display: "block", width: "100%", textAlign: "center",
                 color: "#fff", fontWeight: 800, fontSize: "15px",
                 padding: "14px", borderRadius: "14px",
                 boxShadow: "0 4px 16px rgba(223,132,157,0.3)",
+                border: "none", cursor: "pointer",
               }}
             >
               Start for Free
-            </a>
+            </button>
             <p style={{ fontSize: "12px", color: "#B2A28C", marginTop: "10px", fontWeight: 500 }}>
               Takes 30 seconds to set up.
             </p>

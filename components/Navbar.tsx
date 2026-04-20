@@ -30,6 +30,13 @@ export default function Navbar() {
     }
   }, [searchParams]);
 
+  // Open signup modal from Hero / Pricing CTA buttons.
+  useEffect(() => {
+    function handler() { setAuthOpen(true); }
+    window.addEventListener("openAuthModal", handler);
+    return () => window.removeEventListener("openAuthModal", handler);
+  }, []);
+
   // Close dropdown on outside click.
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
