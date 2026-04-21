@@ -1040,11 +1040,12 @@ export default function RedditFeed({ posts, loading }: Props) {
       {feedMode === "ai" && (
         <button
           onClick={async () => {
-            console.log("[AI] filter triggered | intents:", aiIntents.filter(Boolean), "| subreddits:", aiSubreddits, "| candidate posts:", aiCandidatePosts?.length ?? 0);
+            const intentsToSend = aiIntents.filter(Boolean);
+            console.log("[AI] filter triggered | intents:", intentsToSend, "| subreddits:", aiSubreddits, "| candidate posts:", aiCandidatePosts?.length ?? 0);
             setAiLoading(true);
             setAiError(false);
             try {
-              const result = await runAiFilterAction({});
+              const result = await runAiFilterAction({ intents: intentsToSend, subreddits: aiSubreddits });
               console.log("[AI] filter result | matched:", result.postIds.length, "| postIds:", result.postIds, "| error:", result.error);
               setAiResults(result.postIds);
               if (result.error) setAiError(true);

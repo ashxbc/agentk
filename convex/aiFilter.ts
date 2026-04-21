@@ -90,23 +90,25 @@ export const setAiSettings = mutation({
 });
 
 export const runAiFilter = action({
-  args: {},
-  handler: async (ctx): Promise<{ postIds: string[]; error: boolean }> => {
+  args: {
+    intents:    v.array(v.string()),
+    subreddits: v.array(v.string()),
+  },
+  handler: async (ctx, { intents, subreddits }): Promise<{ postIds: string[]; error: boolean }> => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return { postIds: [], error: true };
 
-    const settings = await ctx.runQuery(
-      internal.aiFilter.getAiSettingsInternal,
-      { userId }
-    );
-    if (!settings || settings.intents.filter(Boolean).length === 0) {
+    const cleanIntents = intents.filter(Boolean);
+    if (cleanIntents.length === 0) {
+      console.warn("[runAiFilter] no intents provided");
       return { postIds: [], error: false };
     }
 
     const posts = await ctx.runQuery(
       internal.aiFilter.getRecentPostsForUser,
-      { userId, subreddits: settings.subreddits }
+      { userId, subreddits }
     );
+    console.log(`[runAiFilter] intents: ${JSON.stringify(cleanIntents)} | subreddits: ${JSON.stringify(subreddits)} | candidate posts: ${posts.length}`);
     if (posts.length === 0) return { postIds: [], error: false };
 
     const apiKey = process.env.OPENROUTER_API_KEY;
@@ -115,9 +117,8 @@ export const runAiFilter = action({
       return { postIds: [], error: true };
     }
 
-    const intentsList = settings.intents
-      .filter(Boolean)
-      .map((i, n) => `${n + 1}. ${i}`)
+    const intentsList = cleanIntents
+      .map((intent: string, n: number) => `${n + 1}. ${intent}`)
       .join("\n");
 
     const candidates = posts.slice(0, 200);
