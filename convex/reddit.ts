@@ -403,6 +403,13 @@ export const globalFetch = internalAction({
             );
             console.log(`[globalFetch] user ${userId} AI: matched ${matchedIds.length}, error: ${error}`);
 
+            // Persist matched IDs so the client can render AI results without a manual trigger.
+            if (!error && matchedIds.length > 0) {
+              await ctx.runMutation(internal.aiFilter.appendMatchedPostIds, {
+                userId, postIds: matchedIds,
+              });
+            }
+
             // Only fire alerts for matched posts that are newly inserted this run
             const insertedSet = new Set(insertedCandidates);
             for (const id of matchedIds) {

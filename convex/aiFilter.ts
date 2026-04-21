@@ -1,7 +1,9 @@
-import { action, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
+
+const MAX_MATCHED_IDS = 500;
 
 const SIX_HOURS_SEC = 6 * 3600;
 
@@ -75,11 +77,74 @@ export const setAiSettings = mutation({
       .query("aiModeSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
+    // Clear matched posts on every settings change — old matches may not align with new intents.
     if (existing) {
-      await ctx.db.patch(existing._id, { intents, subreddits });
+      await ctx.db.patch(existing._id, { intents, subreddits, matchedPostIds: [] });
     } else {
-      await ctx.db.insert("aiModeSettings", { userId, intents, subreddits });
+      await ctx.db.insert("aiModeSettings", { userId, intents, subreddits, matchedPostIds: [] });
     }
+    // Run an immediate reconcile so the user sees matches without waiting for the next 5-min cron.
+    await ctx.scheduler.runAfter(0, internal.aiFilter.reconcileUserAi, { userId });
+  },
+});
+
+// Merge new matches with existing, dedupe, cap.
+export const appendMatchedPostIds = internalMutation({
+  args: { userId: v.id("users"), postIds: v.array(v.string()) },
+  handler: async (ctx, { userId, postIds }) => {
+    const existing = await ctx.db
+      .query("aiModeSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    if (!existing) return;
+    const merged = [...new Set([...(existing.matchedPostIds ?? []), ...postIds])];
+    const capped = merged.slice(-MAX_MATCHED_IDS);
+    await ctx.db.patch(existing._id, { matchedPostIds: capped });
+  },
+});
+
+// Overwrite matched set (used by reconcile after re-running against the full 6h pool).
+export const replaceMatchedPostIds = internalMutation({
+  args: { userId: v.id("users"), postIds: v.array(v.string()) },
+  handler: async (ctx, { userId, postIds }) => {
+    const existing = await ctx.db
+      .query("aiModeSettings")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .first();
+    if (!existing) return;
+    await ctx.db.patch(existing._id, { matchedPostIds: postIds.slice(-MAX_MATCHED_IDS) });
+  },
+});
+
+// Runs Gemini against the user's full 6h candidate pool. Triggered after settings change.
+export const reconcileUserAi = internalAction({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const settings = await ctx.runQuery(internal.aiFilter.getAiSettingsInternal, { userId });
+    if (!settings) return;
+    const cleanIntents = settings.intents.filter(Boolean);
+    if (cleanIntents.length === 0 || settings.subreddits.length === 0) return;
+
+    const posts = await ctx.runQuery(internal.aiFilter.getRecentPostsForUser, {
+      userId, subreddits: settings.subreddits,
+    });
+    if (posts.length === 0) return;
+
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      console.warn("[reconcileUserAi] OPENROUTER_API_KEY not set");
+      return;
+    }
+
+    const { postIds, error } = await matchPostsToIntents(
+      posts.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
+      cleanIntents,
+      apiKey,
+      `reconcile:${userId}`,
+    );
+    if (error) return;
+    console.log(`[reconcileUserAi] user ${userId} → ${postIds.length} matches across ${posts.length} candidates`);
+    await ctx.runMutation(internal.aiFilter.replaceMatchedPostIds, { userId, postIds });
   },
 });
 

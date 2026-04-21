@@ -603,12 +603,8 @@ export default function RedditFeed({ posts, loading }: Props) {
   const [aiIntents, setAiIntents]       = useState<string[]>(["", "", ""]);
   const [aiSubreddits, setAiSubreddits] = useState<string[]>([]);
   const [aiSubInput, setAiSubInput]     = useState("");
-  const [aiResults, setAiResults]       = useState<string[] | null>(null);
-  const [aiLoading, setAiLoading]       = useState(false);
-  const [aiError, setAiError]           = useState(false);
   const aiSettings                      = useQuery(api.aiFilter.getAiSettings);
   const setAiSettingsMutation           = useMutation(api.aiFilter.setAiSettings);
-  const runAiFilterAction               = useAction(api.aiFilter.runAiFilter);
   const aiCandidatePosts                = useQuery(
     api.aiFilter.getAiCandidatePosts,
     feedMode === "ai" ? { subreddits: aiSubreddits } : "skip"
@@ -705,14 +701,14 @@ export default function RedditFeed({ posts, loading }: Props) {
 
   const displayPosts = useMemo(() => {
     if (feedMode === "ai") {
-      if (aiResults === null || !aiCandidatePosts) return [];
-      const ids = new Set(aiResults);
-      const matched = aiCandidatePosts.filter((p) => ids.has(p.postId));
+      if (!aiCandidatePosts) return [];
+      const matchedIds = new Set(aiSettings?.matchedPostIds ?? []);
+      const matched = aiCandidatePosts.filter((p) => matchedIds.has(p.postId));
       console.log("[AI] rendering | candidates:", aiCandidatePosts.length, "| matched:", matched.length);
       return matched;
     }
     return posts;
-  }, [feedMode, aiResults, aiCandidatePosts, posts]);
+  }, [feedMode, aiCandidatePosts, aiSettings, posts]);
 
   // ── Scattered canvas rendering ────────────────────────────────────────────
   const appendBatch = useCallback(
@@ -939,7 +935,7 @@ export default function RedditFeed({ posts, loading }: Props) {
         {/* AI Mode Toggle — inside canvas, top-center */}
         <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 25 }}>
           <button
-            onClick={() => { console.log("[AI] switched to normal mode"); setFeedMode("normal"); setAiResults(null); setAiError(false); }}
+            onClick={() => { console.log("[AI] switched to normal mode"); setFeedMode("normal"); }}
             style={{
               padding: "3px 12px",
               borderRadius: "20px",
@@ -955,7 +951,7 @@ export default function RedditFeed({ posts, loading }: Props) {
             Normal
           </button>
           <button
-            onClick={() => { console.log("[AI] switched to AI mode"); setFeedMode("ai"); setAiResults(null); setAiError(false); }}
+            onClick={() => { console.log("[AI] switched to AI mode"); setFeedMode("ai"); }}
             style={{
               padding: "3px 12px",
               borderRadius: "20px",
@@ -1003,25 +999,29 @@ export default function RedditFeed({ posts, loading }: Props) {
               </>
             )}
           </div>
-        ) : feedMode === "ai" && aiResults === null ? (
+        ) : feedMode === "ai" && displayPosts.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/>
-            </svg>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>AI mode active</p>
-            <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-              Set your intents and press the reload button to find matching posts.
-            </p>
-          </div>
-        ) : feedMode === "ai" && !aiLoading && displayPosts.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-            </svg>
-            <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>No matches found</p>
-            <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-              {aiError ? "AI filter unavailable. Check your API key." : "Try different intents or broaden your subreddits."}
-            </p>
+            {(aiSettings?.intents.filter(Boolean).length ?? 0) === 0 || aiSubreddits.length === 0 ? (
+              <>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>Setup required</p>
+                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
+                  Set your intents and subreddits to find matching posts.
+                </p>
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
+                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+                </svg>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>No matches found</p>
+                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
+                  Try different intents or broaden your subreddits.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           <div ref={innerRef} style={{ position: "relative", width: "100%" }} />
@@ -1034,58 +1034,6 @@ export default function RedditFeed({ posts, loading }: Props) {
           style={{ position: "absolute", inset: 0, zIndex: 15 }}
           onClick={() => setActiveModal(null)}
         />
-      )}
-
-      {/* AI reload button */}
-      {feedMode === "ai" && (
-        <button
-          onClick={async () => {
-            const intentsToSend = aiIntents.filter(Boolean);
-            console.log("[AI] filter triggered | intents:", intentsToSend, "| subreddits:", aiSubreddits, "| candidate posts:", aiCandidatePosts?.length ?? 0);
-            setAiLoading(true);
-            setAiError(false);
-            try {
-              const result = await runAiFilterAction({ intents: intentsToSend, subreddits: aiSubreddits });
-              console.log("[AI] filter result | matched:", result.postIds.length, "| postIds:", result.postIds, "| error:", result.error);
-              setAiResults(result.postIds);
-              if (result.error) setAiError(true);
-            } catch (e) {
-              console.error("[AI] filter exception:", e);
-              setAiError(true);
-            } finally {
-              setAiLoading(false);
-            }
-          }}
-          disabled={aiLoading}
-          style={{
-            position: "absolute",
-            top: "10px",
-            right: "10px",
-            zIndex: 25,
-            width: "28px",
-            height: "28px",
-            borderRadius: "8px",
-            border: "1px solid rgba(0,0,0,0.08)",
-            background: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            cursor: aiLoading ? "not-allowed" : "pointer",
-            color: aiError ? "#E04444" : "#DF849D",
-          }}
-          title="Run AI filter"
-        >
-          {aiLoading ? (
-            <svg style={{ animation: "spin .6s linear infinite" }} viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-          ) : (
-            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="23 4 23 10 17 10" />
-              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-            </svg>
-          )}
-        </button>
       )}
 
       {/* Feed Toolkit */}
