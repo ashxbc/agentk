@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+
+const AI_MODE_ENABLED = process.env.NEXT_PUBLIC_AI_MODE === "true";
 
 interface Post {
   _id: string;
@@ -597,6 +599,18 @@ export default function RedditFeed({ posts, loading }: Props) {
   // Keywords from the currently active group only
   const keywords = keywordGroups[activeGroupIdx]?.keywords ?? [];
 
+  // AI mode state
+  const [feedMode, setFeedMode]         = useState<"normal" | "ai">("normal");
+  const [aiIntents, setAiIntents]       = useState<string[]>(["", "", ""]);
+  const [aiSubreddits, setAiSubreddits] = useState<string[]>([]);
+  const [aiSubInput, setAiSubInput]     = useState("");
+  const [aiResults, setAiResults]       = useState<string[] | null>(null);
+  const [aiLoading, setAiLoading]       = useState(false);
+  const [aiError, setAiError]           = useState(false);
+  const aiSettings                      = useQuery(api.aiFilter.getAiSettings);
+  const setAiSettingsMutation           = useMutation(api.aiFilter.setAiSettings);
+  const runAiFilterAction               = useAction(api.aiFilter.runAiFilter);
+
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -646,6 +660,19 @@ export default function RedditFeed({ posts, loading }: Props) {
     setLoaded(true);
   }
 
+  useEffect(() => {
+    if (!aiSettings) return;
+    const loaded = aiSettings.intents.length > 0
+      ? [...aiSettings.intents, "", "", ""].slice(0, 3)
+      : ["", "", ""];
+    setAiIntents(loaded);
+    setAiSubreddits(aiSettings.subreddits);
+  }, [aiSettings]);
+
+  async function saveAiSettings(intents: string[], subs: string[]) {
+    await setAiSettingsMutation({ intents: intents.filter(Boolean), subreddits: subs });
+  }
+
   async function saveSettings(patch: {
     keywordGroups?: KeywordGroup[];
     activeGroupIdx?: number;
@@ -671,13 +698,21 @@ export default function RedditFeed({ posts, loading }: Props) {
     await upsertSettings(merged);
   }
 
+  const displayPosts = useMemo(() => {
+    if (feedMode === "ai" && aiResults !== null) {
+      const ids = new Set(aiResults);
+      return posts.filter((p) => ids.has(p.postId));
+    }
+    return posts;
+  }, [feedMode, aiResults, posts]);
+
   // ── Scattered canvas rendering ────────────────────────────────────────────
   const appendBatch = useCallback(
     (gen: number) => {
       const inner = innerRef.current;
       if (!inner || gen !== renderGen.current) return;
 
-      const batch = posts.slice(offset.current, offset.current + BATCH);
+      const batch = displayPosts.slice(offset.current, offset.current + BATCH);
       if (!batch.length) return;
 
       const batchIndex = offset.current / BATCH;
@@ -814,7 +849,7 @@ export default function RedditFeed({ posts, loading }: Props) {
       // Remove old sentinel
       inner.querySelector(".reddit-sentinel")?.remove();
 
-      if (offset.current < posts.length) {
+      if (offset.current < displayPosts.length) {
         const sentinel = document.createElement("div");
         sentinel.className = "reddit-sentinel";
         sentinel.style.cssText =
@@ -834,7 +869,7 @@ export default function RedditFeed({ posts, loading }: Props) {
         obs.observe(sentinel);
       }
     },
-    [posts],
+    [displayPosts],
   );
 
   // Re-render scattered canvas when posts change
@@ -845,8 +880,8 @@ export default function RedditFeed({ posts, loading }: Props) {
     offset.current = 0;
     inner.innerHTML = "";
     inner.style.height = "0";
-    if (posts.length > 0) appendBatch(renderGen.current);
-  }, [posts, appendBatch]);
+    if (displayPosts.length > 0) appendBatch(renderGen.current);
+  }, [displayPosts, appendBatch]);
 
   const hasKeywords    = keywords.length > 0;
   const hasSubreddits  = subreddits.length > 0;
@@ -866,6 +901,44 @@ export default function RedditFeed({ posts, loading }: Props) {
         @keyframes spin { to { transform: rotate(360deg); } }
       `}</style>
 
+      {/* AI Mode Toggle */}
+      {AI_MODE_ENABLED && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "4px", padding: "6px 0 2px", flexShrink: 0 }}>
+          <button
+            onClick={() => { setFeedMode("normal"); setAiResults(null); setAiError(false); }}
+            style={{
+              padding: "3px 12px",
+              borderRadius: "20px",
+              border: "1px solid",
+              borderColor: feedMode === "normal" ? "#DF849D" : "rgba(0,0,0,0.1)",
+              background: feedMode === "normal" ? "#DF849D" : "transparent",
+              color: feedMode === "normal" ? "#fff" : "#B2A28C",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Normal
+          </button>
+          <button
+            onClick={() => setFeedMode("ai")}
+            style={{
+              padding: "3px 12px",
+              borderRadius: "20px",
+              border: "1px solid",
+              borderColor: feedMode === "ai" ? "#DF849D" : "rgba(0,0,0,0.1)",
+              background: feedMode === "ai" ? "#DF849D" : "transparent",
+              color: feedMode === "ai" ? "#fff" : "#B2A28C",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            AI
+          </button>
+        </div>
+      )}
+
       {/* Canvas */}
       <div
         ref={canvasRef}
@@ -884,14 +957,14 @@ export default function RedditFeed({ posts, loading }: Props) {
         }
       >
         {settings !== undefined && settings?.tourCompleted !== true ? null
-        : loading && posts.length === 0 ? (
+        : loading && displayPosts.length === 0 && feedMode === "normal" ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
             <svg style={{ animation: "spin .5s linear infinite" }} viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#DF849D" strokeWidth="2">
               <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
             </svg>
             <p style={{ fontSize: "13px", color: "#B2A28C" }}>Loading results…</p>
           </div>
-        ) : !loading && posts.length === 0 ? (
+        ) : !loading && displayPosts.length === 0 && feedMode === "normal" ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
             {!hasKeywords || !hasSubreddits ? (
               <>
