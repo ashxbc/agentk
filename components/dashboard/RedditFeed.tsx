@@ -673,7 +673,9 @@ export default function RedditFeed({ posts, loading }: Props) {
   }, [aiSettings]);
 
   async function saveAiSettings(intents: string[], subs: string[]) {
-    await setAiSettingsMutation({ intents: intents.filter(Boolean), subreddits: subs });
+    const clean = intents.filter(Boolean);
+    console.log("[AI] settings saved | intents:", clean, "| subreddits:", subs);
+    await setAiSettingsMutation({ intents: clean, subreddits: subs });
   }
 
   async function saveSettings(patch: {
@@ -705,7 +707,9 @@ export default function RedditFeed({ posts, loading }: Props) {
     if (feedMode === "ai") {
       if (aiResults === null || !aiCandidatePosts) return [];
       const ids = new Set(aiResults);
-      return aiCandidatePosts.filter((p) => ids.has(p.postId));
+      const matched = aiCandidatePosts.filter((p) => ids.has(p.postId));
+      console.log("[AI] rendering | candidates:", aiCandidatePosts.length, "| matched:", matched.length);
+      return matched;
     }
     return posts;
   }, [feedMode, aiResults, aiCandidatePosts, posts]);
@@ -935,7 +939,7 @@ export default function RedditFeed({ posts, loading }: Props) {
         {/* AI Mode Toggle — inside canvas, top-center */}
         <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 25 }}>
           <button
-            onClick={() => { setFeedMode("normal"); setAiResults(null); setAiError(false); }}
+            onClick={() => { console.log("[AI] switched to normal mode"); setFeedMode("normal"); setAiResults(null); setAiError(false); }}
             style={{
               padding: "3px 12px",
               borderRadius: "20px",
@@ -951,7 +955,7 @@ export default function RedditFeed({ posts, loading }: Props) {
             Normal
           </button>
           <button
-            onClick={() => { setFeedMode("ai"); setAiResults(null); setAiError(false); }}
+            onClick={() => { console.log("[AI] switched to AI mode"); setFeedMode("ai"); setAiResults(null); setAiError(false); }}
             style={{
               padding: "3px 12px",
               borderRadius: "20px",
@@ -1036,13 +1040,16 @@ export default function RedditFeed({ posts, loading }: Props) {
       {feedMode === "ai" && (
         <button
           onClick={async () => {
+            console.log("[AI] filter triggered | intents:", aiIntents.filter(Boolean), "| subreddits:", aiSubreddits, "| candidate posts:", aiCandidatePosts?.length ?? 0);
             setAiLoading(true);
             setAiError(false);
             try {
               const result = await runAiFilterAction({});
+              console.log("[AI] filter result | matched:", result.postIds.length, "| postIds:", result.postIds, "| error:", result.error);
               setAiResults(result.postIds);
               if (result.error) setAiError(true);
-            } catch {
+            } catch (e) {
+              console.error("[AI] filter exception:", e);
               setAiError(true);
             } finally {
               setAiLoading(false);
