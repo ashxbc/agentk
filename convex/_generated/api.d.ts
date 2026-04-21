@@ -9,6 +9,7 @@
  */
 
 import type * as agentTokens from "../agentTokens.js";
+import type * as aiFilter from "../aiFilter.js";
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
@@ -27,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   agentTokens: typeof agentTokens;
+  aiFilter: typeof aiFilter;
   auth: typeof auth;
   crons: typeof crons;
   devices: typeof devices;
