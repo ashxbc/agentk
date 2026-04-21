@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
-const AI_MODE_ENABLED = process.env.NEXT_PUBLIC_AI_MODE === "true";
 
 interface Post {
   _id: string;
@@ -919,42 +918,40 @@ export default function RedditFeed({ posts, loading }: Props) {
         }
       >
         {/* AI Mode Toggle — inside canvas, top-center */}
-        {AI_MODE_ENABLED && (
-          <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 25 }}>
-            <button
-              onClick={() => { setFeedMode("normal"); setAiResults(null); setAiError(false); }}
-              style={{
-                padding: "3px 12px",
-                borderRadius: "20px",
-                border: "1px solid",
-                borderColor: feedMode === "normal" ? "#DF849D" : "rgba(0,0,0,0.1)",
-                background: feedMode === "normal" ? "#DF849D" : "transparent",
-                color: feedMode === "normal" ? "#fff" : "#B2A28C",
-                fontSize: "11px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              Normal
-            </button>
-            <button
-              onClick={() => setFeedMode("ai")}
-              style={{
-                padding: "3px 12px",
-                borderRadius: "20px",
-                border: "1px solid",
-                borderColor: feedMode === "ai" ? "#DF849D" : "rgba(0,0,0,0.1)",
-                background: feedMode === "ai" ? "#DF849D" : "transparent",
-                color: feedMode === "ai" ? "#fff" : "#B2A28C",
-                fontSize: "11px",
-                fontWeight: 600,
-                cursor: "pointer",
-              }}
-            >
-              AI
-            </button>
-          </div>
-        )}
+        <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 25 }}>
+          <button
+            onClick={() => { setFeedMode("normal"); setAiResults(null); setAiError(false); }}
+            style={{
+              padding: "3px 12px",
+              borderRadius: "20px",
+              border: "1px solid",
+              borderColor: feedMode === "normal" ? "#DF849D" : "rgba(0,0,0,0.1)",
+              background: feedMode === "normal" ? "#DF849D" : "transparent",
+              color: feedMode === "normal" ? "#fff" : "#B2A28C",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            Normal
+          </button>
+          <button
+            onClick={() => setFeedMode("ai")}
+            style={{
+              padding: "3px 12px",
+              borderRadius: "20px",
+              border: "1px solid",
+              borderColor: feedMode === "ai" ? "#DF849D" : "rgba(0,0,0,0.1)",
+              background: feedMode === "ai" ? "#DF849D" : "transparent",
+              color: feedMode === "ai" ? "#fff" : "#B2A28C",
+              fontSize: "11px",
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            AI
+          </button>
+        </div>
         {settings !== undefined && settings?.tourCompleted !== true ? null
         : loading && displayPosts.length === 0 && feedMode === "normal" ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
