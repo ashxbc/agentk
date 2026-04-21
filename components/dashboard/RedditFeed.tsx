@@ -1002,6 +1002,7 @@ export default function RedditFeed({ posts, loading }: Props) {
       )}
 
       {/* Feed Toolkit */}
+      {feedMode === "normal" && (
       <div
         data-tour="toolbar"
         style={{
@@ -1091,6 +1092,93 @@ export default function RedditFeed({ posts, loading }: Props) {
           </svg>
         </ToolkitBtn>
       </div>
+      )}
+
+      {/* AI Toolbar */}
+      {feedMode === "ai" && (
+        <div
+          style={{
+            position: "absolute",
+            right: "12px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            zIndex: 20,
+            background: "#fff",
+            borderRadius: "14px",
+            padding: "12px 10px",
+            border: "1px solid rgba(0,0,0,0.07)",
+            width: "168px",
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Intent inputs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span style={{ fontSize: "9px", fontWeight: 700, color: "#B2A28C", textTransform: "uppercase", letterSpacing: "0.5px" }}>Intent</span>
+            {aiIntents.map((intent, idx) => (
+              <div key={idx} style={{ position: "relative" }}>
+                <input
+                  value={intent}
+                  maxLength={60}
+                  placeholder={`Intent ${idx + 1}…`}
+                  onChange={(e) => {
+                    const next = [...aiIntents];
+                    next[idx] = e.target.value;
+                    setAiIntents(next);
+                  }}
+                  onBlur={() => saveAiSettings(aiIntents, aiSubreddits)}
+                  style={{
+                    width: "100%",
+                    padding: "5px 8px",
+                    borderRadius: "8px",
+                    border: "1px solid rgba(0,0,0,0.1)",
+                    fontSize: "11px",
+                    color: "#191918",
+                    background: "#FAFAF8",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Subreddit input */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span style={{ fontSize: "9px", fontWeight: 700, color: "#B2A28C", textTransform: "uppercase", letterSpacing: "0.5px" }}>Subreddits</span>
+            <SubredditInput
+              value={aiSubInput}
+              onChange={setAiSubInput}
+              onAdd={(sub) => {
+                if (aiSubreddits.includes(sub)) return;
+                const next = [...aiSubreddits, sub];
+                setAiSubreddits(next);
+                setAiSubInput("");
+                saveAiSettings(aiIntents, next);
+              }}
+              disabled={aiSubreddits.length >= 5}
+            />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+              {aiSubreddits.map((s) => (
+                <Pill
+                  key={s}
+                  label={s}
+                  color="rgba(223,132,157,0.12)"
+                  textColor="#DF849D"
+                  onRemove={() => {
+                    const next = aiSubreddits.filter((x) => x !== s);
+                    setAiSubreddits(next);
+                    saveAiSettings(aiIntents, next);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Keywords modal */}
       {activeModal === "keywords" && (
