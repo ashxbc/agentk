@@ -89,6 +89,77 @@ export const setAiSettings = mutation({
   },
 });
 
+// All users with non-empty intents AND non-empty subreddits
+export const getAllActiveAiSettings = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const all = await ctx.db.query("aiModeSettings").collect();
+    return all.filter((s) => s.intents.filter(Boolean).length > 0 && s.subreddits.length > 0);
+  },
+});
+
+// Shared helper: given candidate posts + intents, ask Gemini which match.
+// Returns matched postIds.
+export async function matchPostsToIntents(
+  posts: { postId: string; title?: string; body: string }[],
+  intents: string[],
+  apiKey: string,
+  logTag: string = "matchPostsToIntents",
+): Promise<{ postIds: string[]; error: boolean }> {
+  const cleanIntents = intents.filter(Boolean);
+  if (cleanIntents.length === 0 || posts.length === 0) {
+    return { postIds: [], error: false };
+  }
+
+  const intentsList = cleanIntents
+    .map((intent, n) => `${n + 1}. ${intent}`)
+    .join("\n");
+
+  const candidates = posts.slice(0, 200);
+  const titleLines = candidates
+    .map((p) => `${p.postId}: ${p.title ?? p.body.slice(0, 80)}`)
+    .join("\n");
+
+  const prompt =
+    `You are a relevance filter. The user wants to find posts matching these intents:\n${intentsList}\n\n` +
+    `Below are Reddit post titles with their IDs. Return a JSON array of IDs for posts that genuinely ` +
+    `match the user's intent — reduce each post to its core meaning, do not rely on keyword overlap alone.\n\n` +
+    `${titleLines}\n\nReturn ONLY a JSON array of matching IDs, no explanation.`;
+
+  try {
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+
+    if (!res.ok) {
+      console.warn(`[${logTag}] OpenRouter HTTP ${res.status}`);
+      return { postIds: [], error: true };
+    }
+
+    const json = await res.json();
+    const text: string = json?.choices?.[0]?.message?.content ?? "";
+    const match = text.match(/\[[\s\S]*\]/);
+    if (!match) {
+      console.warn(`[${logTag}] Cannot parse response:`, text.slice(0, 200));
+      return { postIds: [], error: true };
+    }
+
+    const postIds: string[] = JSON.parse(match[0]);
+    return { postIds, error: false };
+  } catch (e) {
+    console.warn(`[${logTag}] error:`, e);
+    return { postIds: [], error: true };
+  }
+}
+
 export const runAiFilter = action({
   args: {
     intents:    v.array(v.string()),
@@ -117,52 +188,11 @@ export const runAiFilter = action({
       return { postIds: [], error: true };
     }
 
-    const intentsList = cleanIntents
-      .map((intent: string, n: number) => `${n + 1}. ${intent}`)
-      .join("\n");
-
-    const candidates = posts.slice(0, 200);
-    const titleLines = candidates
-      .map((p) => `${p.postId}: ${p.title ?? p.body.slice(0, 80)}`)
-      .join("\n");
-
-    const prompt =
-      `You are a relevance filter. The user wants to find posts matching these intents:\n${intentsList}\n\n` +
-      `Below are Reddit post titles with their IDs. Return a JSON array of IDs for posts that genuinely ` +
-      `match the user's intent — reduce each post to its core meaning, do not rely on keyword overlap alone.\n\n` +
-      `${titleLines}\n\nReturn ONLY a JSON array of matching IDs, no explanation.`;
-
-    try {
-      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [{ role: "user", content: prompt }],
-        }),
-      });
-
-      if (!res.ok) {
-        console.warn(`[runAiFilter] OpenRouter HTTP ${res.status}`);
-        return { postIds: [], error: true };
-      }
-
-      const json = await res.json();
-      const text: string = json?.choices?.[0]?.message?.content ?? "";
-      const match = text.match(/\[[\s\S]*\]/);
-      if (!match) {
-        console.warn("[runAiFilter] Cannot parse response:", text.slice(0, 200));
-        return { postIds: [], error: true };
-      }
-
-      const postIds: string[] = JSON.parse(match[0]);
-      return { postIds, error: false };
-    } catch (e) {
-      console.warn("[runAiFilter] error:", e);
-      return { postIds: [], error: true };
-    }
+    return await matchPostsToIntents(
+      posts.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
+      cleanIntents,
+      apiKey,
+      "runAiFilter",
+    );
   },
 });

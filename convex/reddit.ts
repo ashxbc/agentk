@@ -2,6 +2,7 @@ import { action, internalAction, internalMutation, internalQuery, query } from "
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
+import { matchPostsToIntents } from "./aiFilter";
 
 const SIX_HOURS_SEC  = 6 * 3600;
 const SIX_HOURS_MS   = SIX_HOURS_SEC * 1000;
@@ -17,11 +18,13 @@ function proxyHeaders(): Record<string, string> {
   return key ? { "X-Api-Key": key } : { "User-Agent": "agentk/1.0" };
 }
 
-function subredditUrl(sub: string): string {
+// Accepts up to 3 subs (Reddit multi-sub syntax: r/sub1+sub2+sub3)
+function subredditUrl(subs: string[]): string {
   const base = proxyBase();
+  const path = subs.map(encodeURIComponent).join("+");
   return base
-    ? `${base}/r/${encodeURIComponent(sub)}/new?limit=50`
-    : `https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=50`;
+    ? `${base}/r/${path}/new?limit=100`
+    : `https://www.reddit.com/r/${path}/new.json?limit=100`;
 }
 
 function karmaUrl(author: string): string {
@@ -39,8 +42,8 @@ function searchUrl(q: string): string {
 }
 
 // Fetch helper — retries up to 2 times on network/5xx errors, skips on 429
-async function fetchJSON(sub: string): Promise<{ json: any; proxyHost: string } | null> {
-  const url     = subredditUrl(sub);
+async function fetchJSON(subs: string[]): Promise<{ json: any; proxyHost: string } | null> {
+  const url     = subredditUrl(subs);
   const headers = proxyHeaders();
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -242,121 +245,178 @@ export const getAllActiveSettings = internalQuery({
   },
 });
 
-// ── globalFetch — shared 3-min cron: 1 fetch per subreddit, fan-out to users ─
+// ── globalFetch — shared cron: batched fetch (≤3 subs per request), normal + AI fan-out ─
 
-const BATCH_SIZE = 25;
+const BATCH_SIZE = 25;         // max unique subs per run (overflow scheduled 90s later)
+const CHUNK_SIZE = 3;          // max subs per single Reddit multi-sub request
 const jitter = () => Math.floor(Math.random() * 1000);
+
+function mapRedditPost(p: any) {
+  return {
+    postId:      String(p.id),
+    type:        p.is_self ? "self" : "link",
+    title:       p.title ?? undefined,
+    body:        p.selftext ?? "",
+    author:      p.author ?? "",
+    subreddit:   p.subreddit ?? "",
+    url:         `https://www.reddit.com${p.permalink}`,
+    ups:         p.ups ?? 0,
+    numComments: p.num_comments ?? 0,
+    createdUtc:  p.created_utc ?? 0,
+  };
+}
 
 export const globalFetch = internalAction({
   args: { subsToFetch: v.optional(v.array(v.string())) },
   handler: async (ctx, { subsToFetch }) => {
-    // 1. All users with active settings
-    const allSettings = await ctx.runQuery(internal.reddit.getAllActiveSettings);
-    if (allSettings.length === 0) {
+    // 1. Users with normal settings + users with AI settings
+    const allSettings   = await ctx.runQuery(internal.reddit.getAllActiveSettings);
+    const allAiSettings = await ctx.runQuery(internal.aiFilter.getAllActiveAiSettings);
+
+    if (allSettings.length === 0 && allAiSettings.length === 0) {
       console.log("[globalFetch] no active users — skipping");
       return;
     }
 
-    // 2. Unique subreddits — use override if provided (overflow batch), else derive from all users
-    const allUniqueSubs = subsToFetch ?? [
-      ...new Set(allSettings.flatMap((s) => s.subreddits.map((r) => r.toLowerCase()))),
-    ];
+    // 2. Unique subreddits — combine normal + AI subs
+    const normalSubs = allSettings.flatMap((s) => s.subreddits.map((r) => r.toLowerCase()));
+    const aiSubs     = allAiSettings.flatMap((s) => s.subreddits.map((r) => r.toLowerCase()));
+    const allUniqueSubs = subsToFetch ?? [...new Set([...normalSubs, ...aiSubs])];
 
-    // 3. Batch split: if > 25 subs, process first 25 and schedule the rest in 90s
+    // 3. Batch split: BATCH_SIZE subs per run, overflow to 90s later
     const batchSubs    = allUniqueSubs.slice(0, BATCH_SIZE);
     const overflowSubs = allUniqueSubs.slice(BATCH_SIZE);
 
     if (overflowSubs.length > 0) {
-      console.log(`[globalFetch] ${allUniqueSubs.length} subs — batch 1: ${batchSubs.length}, overflow: ${overflowSubs.length} scheduled in 90s`);
+      console.log(`[globalFetch] ${allUniqueSubs.length} subs — run 1: ${batchSubs.length}, overflow: ${overflowSubs.length} scheduled in 90s`);
       await ctx.scheduler.runAfter(90_000, internal.reddit.globalFetch, { subsToFetch: overflowSubs });
     } else {
-      console.log("[globalFetch] start — users:", allSettings.length, "| subreddits:", batchSubs.length);
+      console.log(`[globalFetch] start — normal users: ${allSettings.length} | AI users: ${allAiSettings.length} | subreddits: ${batchSubs.length}`);
     }
 
-    // 4. Fetch each subreddit once with jittered delay between requests
-    const postsBySub = new Map<string, any[]>();
-    for (const sub of batchSubs) {
-      const result = await fetchJSON(sub);
+    // 4. Fetch subs in chunks of ≤3 (Reddit multi-sub syntax: r/sub1+sub2+sub3)
+    const allPosts: any[] = [];
+    for (let i = 0; i < batchSubs.length; i += CHUNK_SIZE) {
+      const chunk = batchSubs.slice(i, i + CHUNK_SIZE);
+      const result = await fetchJSON(chunk);
       if (result) {
         const posts = result.json.data?.children?.map((c: any) => c.data) ?? [];
-        postsBySub.set(sub, posts);
-        console.log(`[globalFetch] r/${sub} via ${result.proxyHost} → ${posts.length} posts`);
+        allPosts.push(...posts);
+        console.log(`[globalFetch] r/${chunk.join("+")} via ${result.proxyHost} → ${posts.length} posts`);
       } else {
-        console.warn("[globalFetch] null response for r/" + sub);
+        console.warn(`[globalFetch] null response for r/${chunk.join("+")}`);
       }
       await new Promise((r) => setTimeout(r, 1500 + jitter()));
     }
 
-    // 4. Global post filter: last 6h, not deleted/removed, title >50 chars, score ≥1
+    // 5. Global post filter: last 6h, not deleted/removed, title >50 chars, score ≥1
     const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
     const filteredPosts: any[] = [];
     const seenIds = new Set<string>();
 
-    for (const posts of postsBySub.values()) {
-      for (const p of posts) {
-        if (!p?.id || seenIds.has(p.id)) continue;
-        if ((p.created_utc ?? 0) < cutoffSec) continue;
-        if (!p.title || p.title.length <= 50) continue;
-        if ((p.score ?? p.ups ?? 0) < 1) continue;
-        const selftext = (p.selftext ?? "").toLowerCase().trim();
-        if (selftext === "[deleted]" || selftext === "[removed]") continue;
-        seenIds.add(p.id);
-        filteredPosts.push(p);
-      }
+    for (const p of allPosts) {
+      if (!p?.id || seenIds.has(p.id)) continue;
+      if ((p.created_utc ?? 0) < cutoffSec) continue;
+      if (!p.title || p.title.length <= 50) continue;
+      if ((p.score ?? p.ups ?? 0) < 1) continue;
+      const selftext = (p.selftext ?? "").toLowerCase().trim();
+      if (selftext === "[deleted]" || selftext === "[removed]") continue;
+      seenIds.add(p.id);
+      filteredPosts.push(p);
     }
 
-    console.log("[globalFetch] after global filter:", filteredPosts.length, "posts");
+    console.log(`[globalFetch] after global filter: ${filteredPosts.length} posts`);
     if (filteredPosts.length === 0) return;
 
-    // 5. Fan-out: match posts to each user's keywords + subreddits
-    for (const settings of allSettings) {
-      const { userId, keywords, subreddits, excluded, minUpvotes, minComments } = settings;
-      const allowedSubs   = new Set(subreddits.map((s) => s.toLowerCase()));
-      const keywordsLower = keywords.map((k) => k.toLowerCase());
-      const excludedLower = excluded.map((e) => e.toLowerCase());
+    // 6. Unified fan-out: per user, run normal flow + AI flow, then fire alerts once
+    const apiKey       = process.env.OPENROUTER_API_KEY;
+    const normalByUser = new Map(allSettings.map((s) => [String(s.userId), s]));
+    const aiByUser     = new Map(allAiSettings.map((s) => [String(s.userId), s]));
+    const allUserIdStrs = new Set<string>([...normalByUser.keys(), ...aiByUser.keys()]);
 
-      const userPosts = filteredPosts
-        .filter((p) => {
-          if (!allowedSubs.has((p.subreddit ?? "").toLowerCase())) return false;
-          const title = (p.title ?? "").toLowerCase();
-          if (!keywordsLower.some((k) => title.includes(k))) return false;
-          if ((p.ups ?? 0) < minUpvotes) return false;
-          if ((p.num_comments ?? 0) < minComments) return false;
-          const text = `${p.title ?? ""} ${p.selftext ?? ""}`.toLowerCase();
-          if (excludedLower.some((e) => text.includes(e))) return false;
-          return true;
-        })
-        .map((p) => ({
-          postId:      String(p.id),
-          type:        p.is_self ? "self" : "link",
-          title:       p.title ?? undefined,
-          body:        p.selftext ?? "",
-          author:      p.author ?? "",
-          subreddit:   p.subreddit ?? "",
-          url:         `https://www.reddit.com${p.permalink}`,
-          ups:         p.ups ?? 0,
-          numComments: p.num_comments ?? 0,
-          createdUtc:  p.created_utc ?? 0,
-        }));
+    for (const userIdStr of allUserIdStrs) {
+      const normalS = normalByUser.get(userIdStr);
+      const aiS     = aiByUser.get(userIdStr);
+      const userId  = (normalS?.userId ?? aiS!.userId);
 
-      console.log("[globalFetch] userId:", userId, "| matched:", userPosts.length, "posts");
-
-      // 6. Clean up expired posts for this user (>6h old)
+      // Cleanup expired posts for this user (>6h)
       await ctx.runMutation(internal.reddit.deleteExpiredForUser, { userId });
 
-      if (userPosts.length === 0) continue;
+      const newPostIdsForAlerts = new Set<string>();
 
-      // 7. Upsert into redditResults; get only newly inserted postIds
-      const newPostIds = await ctx.runMutation(internal.reddit.upsertResults, {
-        userId,
-        posts: userPosts,
-      });
-      console.log("[globalFetch] userId:", userId, "| inserted:", newPostIds.length, "new posts");
+      // --- Normal flow: keyword match + upsert ---
+      if (normalS) {
+        const { keywords, subreddits, excluded, minUpvotes, minComments } = normalS;
+        const allowedSubs   = new Set(subreddits.map((s) => s.toLowerCase()));
+        const keywordsLower = keywords.map((k) => k.toLowerCase());
+        const excludedLower = excluded.map((e) => e.toLowerCase());
 
-      // 8. Send alerts for new posts
-      if (newPostIds.length > 0) {
-        await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: newPostIds });
-        await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: newPostIds });
+        const userPosts = filteredPosts
+          .filter((p) => {
+            if (!allowedSubs.has((p.subreddit ?? "").toLowerCase())) return false;
+            const title = (p.title ?? "").toLowerCase();
+            if (!keywordsLower.some((k) => title.includes(k))) return false;
+            if ((p.ups ?? 0) < minUpvotes) return false;
+            if ((p.num_comments ?? 0) < minComments) return false;
+            const text = `${p.title ?? ""} ${p.selftext ?? ""}`.toLowerCase();
+            if (excludedLower.some((e) => text.includes(e))) return false;
+            return true;
+          })
+          .map(mapRedditPost);
+
+        console.log(`[globalFetch] user ${userId} normal: matched ${userPosts.length}`);
+
+        if (userPosts.length > 0) {
+          const inserted: string[] = await ctx.runMutation(internal.reddit.upsertResults, {
+            userId, posts: userPosts,
+          });
+          console.log(`[globalFetch] user ${userId} normal: inserted ${inserted.length} new`);
+          for (const id of inserted) newPostIdsForAlerts.add(id);
+        }
+      }
+
+      // --- AI flow: upsert AI-sub candidates + Gemini intent match ---
+      if (aiS && apiKey) {
+        const { intents, subreddits } = aiS;
+        const cleanIntents = intents.filter(Boolean);
+        if (cleanIntents.length > 0 && subreddits.length > 0) {
+          const allowedSubs = new Set(subreddits.map((s) => s.toLowerCase()));
+          const aiCandidates = filteredPosts
+            .filter((p) => allowedSubs.has((p.subreddit ?? "").toLowerCase()))
+            .map(mapRedditPost);
+
+          console.log(`[globalFetch] user ${userId} AI: candidates ${aiCandidates.length}`);
+
+          if (aiCandidates.length > 0) {
+            // Upsert the full candidate pool so getAiCandidatePosts can return them client-side
+            const insertedCandidates: string[] = await ctx.runMutation(internal.reddit.upsertResults, {
+              userId, posts: aiCandidates,
+            });
+            console.log(`[globalFetch] user ${userId} AI: inserted ${insertedCandidates.length} candidates`);
+
+            // Ask Gemini which candidates match the user's intents
+            const { postIds: matchedIds, error } = await matchPostsToIntents(
+              aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
+              cleanIntents,
+              apiKey,
+              `globalFetch:ai:${userId}`,
+            );
+            console.log(`[globalFetch] user ${userId} AI: matched ${matchedIds.length}, error: ${error}`);
+
+            // Only fire alerts for matched posts that are newly inserted this run
+            const insertedSet = new Set(insertedCandidates);
+            for (const id of matchedIds) {
+              if (insertedSet.has(id)) newPostIdsForAlerts.add(id);
+            }
+          }
+        }
+      }
+
+      // --- Fire alerts once per user (combined normal + AI new posts) ---
+      if (newPostIdsForAlerts.size > 0) {
+        const idsArr = [...newPostIdsForAlerts];
+        await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: idsArr });
+        await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: idsArr });
       }
     }
   },
