@@ -876,6 +876,16 @@ export default function RedditFeed({ posts, loading }: Props) {
     [displayPosts],
   );
 
+  // Clear canvas whenever feed mode switches
+  useEffect(() => {
+    const inner = innerRef.current;
+    if (!inner) return;
+    renderGen.current++;
+    offset.current = 0;
+    inner.innerHTML = "";
+    inner.style.height = "0";
+  }, [feedMode]);
+
   // Re-render scattered canvas when posts change
   useEffect(() => {
     const inner = innerRef.current;
@@ -941,7 +951,7 @@ export default function RedditFeed({ posts, loading }: Props) {
             Normal
           </button>
           <button
-            onClick={() => setFeedMode("ai")}
+            onClick={() => { setFeedMode("ai"); setAiResults(null); setAiError(false); }}
             style={{
               padding: "3px 12px",
               borderRadius: "20px",
