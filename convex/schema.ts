@@ -81,4 +81,10 @@ export default defineSchema({
     fetchedAt: v.number(),
   }).index("by_author", ["author"]),
 
+  aiModeSettings: defineTable({
+    userId:     v.id("users"),
+    intents:    v.array(v.string()),
+    subreddits: v.array(v.string()),
+  }).index("by_user", ["userId"]),
+
 });
