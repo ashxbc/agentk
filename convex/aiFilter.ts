@@ -34,6 +34,29 @@ export const getRecentPostsForUser = internalQuery({
   },
 });
 
+// Client query: all posts for AI mode (no keyword filter) for given subreddits
+export const getAiCandidatePosts = query({
+  args: { subreddits: v.array(v.string()) },
+  handler: async (ctx, { subreddits }) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
+    const allowedSubs =
+      subreddits.length > 0
+        ? new Set(subreddits.map((s) => s.toLowerCase()))
+        : null;
+    const posts = await ctx.db
+      .query("redditResults")
+      .withIndex("by_user_created", (q) =>
+        q.eq("userId", userId).gte("createdUtc", cutoffSec)
+      )
+      .collect();
+    return allowedSubs
+      ? posts.filter((p) => allowedSubs.has(p.subreddit.toLowerCase()))
+      : posts;
+  },
+});
+
 export const getAiSettings = query({
   args: {},
   handler: async (ctx) => {
