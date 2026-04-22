@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -704,11 +704,11 @@ export default function RedditFeed({ posts, loading }: Props) {
 
   const displayPosts = useMemo(() => {
     if (feedMode === "ai") {
-      if (!aiCandidatePosts) return [];
+      // Strict: never fall back to normal-mode posts. If any AI dependency is
+      // unloaded, return []. Normal posts must never render under AI mode.
+      if (aiCandidatePosts === undefined || aiSettings === undefined) return [];
       const matchedIds = new Set(aiSettings?.matchedPostIds ?? []);
-      const matched = aiCandidatePosts.filter((p) => matchedIds.has(p.postId));
-      console.log("[AI] rendering | candidates:", aiCandidatePosts.length, "| matched:", matched.length);
-      return matched;
+      return aiCandidatePosts.filter((p) => matchedIds.has(p.postId));
     }
     return posts;
   }, [feedMode, aiCandidatePosts, aiSettings, posts]);
@@ -879,18 +879,9 @@ export default function RedditFeed({ posts, loading }: Props) {
     [displayPosts],
   );
 
-  // Clear canvas whenever feed mode switches
-  useEffect(() => {
-    const inner = innerRef.current;
-    if (!inner) return;
-    renderGen.current++;
-    offset.current = 0;
-    inner.innerHTML = "";
-    inner.style.height = "0";
-  }, [feedMode]);
-
-  // Re-render scattered canvas when posts change
-  useEffect(() => {
+  // Clear canvas synchronously before paint whenever mode OR posts change.
+  // useLayoutEffect prevents a flash of stale DOM from the previous mode.
+  useLayoutEffect(() => {
     const inner = innerRef.current;
     if (!inner) return;
     renderGen.current++;
@@ -898,7 +889,7 @@ export default function RedditFeed({ posts, loading }: Props) {
     inner.innerHTML = "";
     inner.style.height = "0";
     if (displayPosts.length > 0) appendBatch(renderGen.current);
-  }, [displayPosts, appendBatch]);
+  }, [feedMode, displayPosts, appendBatch]);
 
   const hasKeywords    = keywords.length > 0;
   const hasSubreddits  = subreddits.length > 0;
@@ -1002,7 +993,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               </>
             )}
           </div>
-        ) : feedMode === "ai" && displayPosts.length === 0 && aiCandidatePosts !== undefined && aiSettings !== undefined ? (
+        ) : feedMode === "ai" && displayPosts.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
             {(aiSettings?.intents.filter(Boolean).length ?? 0) === 0 || aiSubreddits.length === 0 ? (
               <>
@@ -1027,7 +1018,7 @@ export default function RedditFeed({ posts, loading }: Props) {
             )}
           </div>
         ) : (
-          <div ref={innerRef} style={{ position: "relative", width: "100%" }} />
+          <div key={feedMode} ref={innerRef} style={{ position: "relative", width: "100%" }} />
         )}
       </div>
 
