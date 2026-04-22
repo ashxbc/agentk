@@ -525,7 +525,7 @@ function LeadListView({
   function handleExport() {
     if (!leads || leads.length === 0) return;
     const header = [
-      "Title", "URL", "Subreddit", "Author", "Query", "Source",
+      "Title", "URL", "Subreddit", "Author", "Query",
       "Upvotes", "Comments", "Posted (UTC)", "Added (UTC)",
     ];
     const rows = leads.map((l) => [
@@ -534,7 +534,6 @@ function LeadListView({
       `r/${l.subreddit}`,
       `u/${l.author}`,
       l.query,
-      l.source,
       String(l.ups),
       String(l.numComments),
       new Date(l.createdUtc * 1000).toISOString(),
@@ -781,8 +780,8 @@ function LeadTableRow({ lead, first, onRemove }: { lead: Lead; first: boolean; o
         <span style={{
           display: "inline-block", maxWidth: "100%",
           padding: "2px 8px", borderRadius: 999,
-          background: lead.source === "ai" ? "rgba(223,132,157,0.10)" : "rgba(0,0,0,0.04)",
-          color: lead.source === "ai" ? ACCENT : BODY,
+          background: "rgba(0,0,0,0.04)",
+          color: BODY,
           fontSize: 11, fontWeight: 500,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>

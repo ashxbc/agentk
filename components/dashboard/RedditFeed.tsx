@@ -1663,7 +1663,7 @@ export default function RedditFeed({ posts, loading }: Props) {
                       width: 22, height: 22, flexShrink: 0, border: "none", padding: 0,
                       borderRadius: 6, cursor: "pointer", display: "flex",
                       alignItems: "center", justifyContent: "center",
-                      background: hasMapping ? "rgba(223,132,157,0.14)" : "transparent",
+                      background: "transparent",
                       color: hasMapping ? "#DF849D" : "#C4B9AA",
                       transition: "all .15s",
                     }}
@@ -1958,16 +1958,9 @@ function ListSelectorModal({
               onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isActive ? "rgba(223,132,157,0.08)" : "transparent"; }}
             >
               <span>{l.name}</span>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                {l.count !== undefined && (
-                  <span style={{ fontSize: 11, color: "#B2A28C", fontVariantNumeric: "tabular-nums" }}>{l.count}</span>
-                )}
-                {isActive && (
-                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#DF849D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="2 8 6 12 14 4"/>
-                  </svg>
-                )}
-              </div>
+              {l.count !== undefined && (
+                <span style={{ fontSize: 11, color: "#B2A28C", fontVariantNumeric: "tabular-nums" }}>{l.count}</span>
+              )}
             </div>
           );
         })}
