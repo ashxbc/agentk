@@ -544,7 +544,14 @@ export const globalFetch = internalAction({
                 userId, pairs,
               });
             }
-            for (const id of newMatches) newPostIdsForAlerts.add(id);
+            // Alert every intent-matched post — not just newly-inserted ones.
+            // Reason: Reddit keeps returning the same posts for several cycles,
+            // so by the time the classifier matches one it's typically already
+            // stored, which made newMatches=0 and silently killed alerts. The
+            // downstream alertedPosts table already dedupes per (user, post,
+            // platform), and the 30-min post-age cap in sendAlerts prevents
+            // alerting on stale hits. So it's safe to feed the full set.
+            for (const id of uniqueMatchedIds) newPostIdsForAlerts.add(id);
           }
         }
       } else {
@@ -554,8 +561,11 @@ export const globalFetch = internalAction({
       // --- Fire alerts once per user (combined normal + AI new posts) ---
       if (newPostIdsForAlerts.size > 0) {
         const idsArr = [...newPostIdsForAlerts];
+        console.log(`[ALERT]  ${tag} | dispatching ${idsArr.length} postIds to Telegram + Discord`);
         await ctx.scheduler.runAfter(0, internal.telegram.sendAlerts, { userId, postIds: idsArr });
         await ctx.scheduler.runAfter(0, internal.discord.sendDiscordAlerts, { userId, postIds: idsArr });
+      } else {
+        console.log(`[ALERT]  ${tag} | nothing to alert`);
       }
     }
   },

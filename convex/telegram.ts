@@ -267,12 +267,13 @@ export const sendAlerts = internalAction({
     postIds: v.array(v.string()),
   },
   handler: async (ctx, { userId, postIds }) => {
+    const tag = `user=${userId}`;
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) return;
+    if (!botToken) { console.warn(`[TG]     ${tag} | TELEGRAM_BOT_TOKEN not set`); return; }
 
     const agentToken = await ctx.runQuery(internal.agentTokens.getByUser, { userId });
-    if (!agentToken?.telegramChatId) return;
-    if (agentToken.paused) return;
+    if (!agentToken?.telegramChatId) { console.log(`[TG]     ${tag} | skipped: no telegramChatId`); return; }
+    if (agentToken.paused) { console.log(`[TG]     ${tag} | skipped: alerts paused`); return; }
 
     const chatId   = agentToken.telegramChatId;
     const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
@@ -286,14 +287,17 @@ export const sendAlerts = internalAction({
       const recentCount = await ctx.runQuery(internal.telegram.countRecentAlerts, {
         userId, platform: "telegram", since: Date.now() - ONE_HOUR_MS,
       });
-      if (recentCount >= cap) return;
+      if (recentCount >= cap) { console.log(`[TG]     ${tag} | skipped: hourly cap ${cap} reached (${recentCount}/${cap})`); return; }
       sentThisRun = recentCount;
     }
+
+    console.log(`[TG]     ${tag} | processing ${postIds.length} candidate postIds`);
+    let skippedAlerted = 0, skippedMissing = 0, skippedStale = 0, sent = 0, failed = 0;
 
     for (const postId of postIds) {
       if (cap > 0 && sentThisRun >= cap) break;
       const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "telegram" });
-      if (alerted) continue;
+      if (alerted) { skippedAlerted++; continue; }
 
       // Try the normal table first, then the isolated AI table.
       const normalPost = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
@@ -301,10 +305,10 @@ export const sendAlerts = internalAction({
         ? null
         : await ctx.runQuery(internal.reddit.getAiPostByUserPost, { userId, postId });
       const post = normalPost ?? aiPost;
-      if (!post) continue;
+      if (!post) { skippedMissing++; continue; }
 
       // Skip posts older than 30 minutes (Reddit post age, not fetch time)
-      if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) continue;
+      if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) { skippedStale++; continue; }
 
       // Compute the matched query. AI posts use matchedIntents (normalized
       // query strings); normal posts use matchedKeywords with a substring
@@ -352,12 +356,17 @@ export const sendAlerts = internalAction({
         `⬆️ ${esc(String(post.ups))} upvotes · 💬 ${esc(String(post.numComments))} comments\n` +
         `👤 u/${esc(post.author)} · ${esc(karma)} karma`;
 
-      const sent = await tgSend(botToken, chatId, alertText, post.url);
-      if (sent) {
+      const ok = await tgSend(botToken, chatId, alertText, post.url);
+      if (ok) {
         await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "telegram" });
         sentThisRun++;
+        sent++;
+      } else {
+        failed++;
       }
     }
+
+    console.log(`[TG]     ${tag} | sent=${sent} failed=${failed} already-alerted=${skippedAlerted} missing-post=${skippedMissing} >30min=${skippedStale}`);
   },
 });
 
