@@ -1002,7 +1002,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               </>
             )}
           </div>
-        ) : feedMode === "ai" && displayPosts.length === 0 ? (
+        ) : feedMode === "ai" && displayPosts.length === 0 && aiCandidatePosts !== undefined && aiSettings !== undefined ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
             {(aiSettings?.intents.filter(Boolean).length ?? 0) === 0 || aiSubreddits.length === 0 ? (
               <>

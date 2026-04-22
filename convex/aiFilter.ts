@@ -1,4 +1,4 @@
-import { action, internalAction, internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
@@ -80,13 +80,12 @@ export const setAiSettings = mutation({
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
     // Clear matched posts on every settings change — old matches may not align with new intents.
+    // New matches are produced only by the next globalFetch cycle. No manual trigger.
     if (existing) {
       await ctx.db.patch(existing._id, { intents, subreddits, matchedPostIds: [] });
     } else {
       await ctx.db.insert("aiModeSettings", { userId, intents, subreddits, matchedPostIds: [] });
     }
-    // Run an immediate reconcile so the user sees matches without waiting for the next 5-min cron.
-    await ctx.scheduler.runAfter(0, internal.aiFilter.reconcileUserAi, { userId });
   },
 });
 
@@ -102,51 +101,6 @@ export const appendMatchedPostIds = internalMutation({
     const merged = [...new Set([...(existing.matchedPostIds ?? []), ...postIds])];
     const capped = merged.slice(-MAX_MATCHED_IDS);
     await ctx.db.patch(existing._id, { matchedPostIds: capped });
-  },
-});
-
-// Overwrite matched set (used by reconcile after re-running against the full 6h pool).
-export const replaceMatchedPostIds = internalMutation({
-  args: { userId: v.id("users"), postIds: v.array(v.string()) },
-  handler: async (ctx, { userId, postIds }) => {
-    const existing = await ctx.db
-      .query("aiModeSettings")
-      .withIndex("by_user", (q) => q.eq("userId", userId))
-      .first();
-    if (!existing) return;
-    await ctx.db.patch(existing._id, { matchedPostIds: postIds.slice(-MAX_MATCHED_IDS) });
-  },
-});
-
-// Runs Gemini against the user's full 6h candidate pool. Triggered after settings change.
-export const reconcileUserAi = internalAction({
-  args: { userId: v.id("users") },
-  handler: async (ctx, { userId }) => {
-    const settings = await ctx.runQuery(internal.aiFilter.getAiSettingsInternal, { userId });
-    if (!settings) return;
-    const cleanIntents = settings.intents.filter(Boolean);
-    if (cleanIntents.length === 0 || settings.subreddits.length === 0) return;
-
-    const posts = await ctx.runQuery(internal.aiFilter.getRecentPostsForUser, {
-      userId, subreddits: settings.subreddits,
-    });
-    if (posts.length === 0) return;
-
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      console.warn("[reconcileUserAi] OPENROUTER_API_KEY not set");
-      return;
-    }
-
-    const { postIds, error } = await matchPostsToIntents(
-      posts.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
-      cleanIntents,
-      apiKey,
-      `reconcile:${userId}`,
-    );
-    if (error) return;
-    console.log(`[reconcileUserAi] user ${userId} → ${postIds.length} matches across ${posts.length} candidates`);
-    await ctx.runMutation(internal.aiFilter.replaceMatchedPostIds, { userId, postIds });
   },
 });
 
@@ -178,14 +132,32 @@ export async function matchPostsToIntents(
 
   const candidates = posts.slice(0, 200);
   const titleLines = candidates
-    .map((p) => `${p.postId}: ${p.title ?? p.body.slice(0, 80)}`)
+    .map((p) => `${p.postId}\t${p.title ?? p.body.slice(0, 80)}`)
     .join("\n");
 
   const prompt =
-    `You are a relevance filter. The user wants to find posts matching these intents:\n${intentsList}\n\n` +
-    `Below are Reddit post titles with their IDs. Return a JSON array of IDs for posts that genuinely ` +
-    `match the user's intent — reduce each post to its core meaning, do not rely on keyword overlap alone.\n\n` +
-    `${titleLines}\n\nReturn ONLY a JSON array of matching IDs, no explanation.`;
+`You are a world-class semantic relevance classifier for Reddit post titles.
+
+Your only job: decide which titles below genuinely match the user's stated intents.
+
+USER INTENTS (a title matches if it truthfully satisfies ANY single intent):
+${intentsList}
+
+MATCHING RULES — follow strictly:
+1. Judge by MEANING, not by keyword overlap. A title with the right keywords but the wrong meaning is NOT a match. A title with different wording but the same meaning IS a match.
+2. The match must be unambiguous and specific. If you'd have to stretch, invent context, or assume — do not match.
+3. Exclude titles that merely mention the topic in passing, are tangential, off-topic, joking, memes, rants, or unrelated discussion.
+4. Exclude titles where the intent is reversed (e.g. intent is "people who need X"; title is "people who hate X").
+5. Questions, help requests, problem descriptions, and first-person posts can match if their core subject aligns with the intent.
+6. Case, punctuation, emoji, and subreddit don't matter — only meaning.
+7. When in doubt, exclude. Precision over recall.
+
+INPUT FORMAT: one title per line, TAB-separated as "<postId>\\t<title>".
+
+TITLES:
+${titleLines}
+
+OUTPUT: return ONLY a valid JSON array of the matching postIds as strings, e.g. ["abc123","def456"]. No prose, no keys, no markdown fences. Return [] if nothing matches.`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
