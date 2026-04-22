@@ -18,6 +18,9 @@ export default defineSchema({
     numComments: v.number(),
     createdUtc:  v.number(),
     fetchedAt:   v.number(),
+    // Keywords from the user's active group that matched this post's title/body
+    // at insert time. Denormalized for auditability.
+    matchedKeywords: v.optional(v.array(v.string())),
   })
     .index("by_user",         ["userId"])
     .index("by_user_post",    ["userId", "postId"])
@@ -39,6 +42,10 @@ export default defineSchema({
     numComments: v.number(),
     createdUtc:  v.number(),
     fetchedAt:   v.number(),
+    // Normalized intent queries from aiModeSettings.intents that the
+    // classifier tagged this post with. Union-merged across cycles if the
+    // same post gets re-matched by another intent.
+    matchedIntents: v.optional(v.array(v.string())),
   })
     .index("by_user",         ["userId"])
     .index("by_user_post",    ["userId", "postId"])

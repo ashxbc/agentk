@@ -155,6 +155,31 @@ export const deleteExpiredForUser = internalMutation({
   },
 });
 
+// Merge matched intents onto redditResultsAi rows by postId. Each row
+// accumulates the normalized intent queries it was classified under.
+export const tagAiPostsWithIntents = internalMutation({
+  args: {
+    userId: v.id("users"),
+    pairs:  v.array(v.object({ postId: v.string(), intent: v.string() })),
+  },
+  handler: async (ctx, { userId, pairs }) => {
+    const byPost = new Map<string, Set<string>>();
+    for (const { postId, intent } of pairs) {
+      if (!byPost.has(postId)) byPost.set(postId, new Set());
+      byPost.get(postId)!.add(intent);
+    }
+    for (const [postId, intents] of byPost) {
+      const row = await ctx.db
+        .query("redditResultsAi")
+        .withIndex("by_user_post", (q) => q.eq("userId", userId).eq("postId", postId))
+        .first();
+      if (!row) continue;
+      const merged = Array.from(new Set([...(row.matchedIntents ?? []), ...intents]));
+      await ctx.db.patch(row._id, { matchedIntents: merged });
+    }
+  },
+});
+
 // Upsert AI-mode candidate posts into the isolated redditResultsAi table.
 // Returns only postIds that were newly inserted.
 export const upsertAiCandidates = internalMutation({
@@ -190,21 +215,25 @@ export const upsertAiCandidates = internalMutation({
   },
 });
 
-// Upsert posts; returns only the postIds that were newly inserted
+// Upsert posts; returns only the postIds that were newly inserted.
+// Each post carries the list of matchedKeywords that triggered its inclusion
+// (denormalized from the user's active keyword list at insert time). When an
+// existing row is re-matched in a later cycle we union-merge the keywords.
 export const upsertResults = internalMutation({
   args: {
     userId: v.id("users"),
     posts: v.array(v.object({
-      postId:      v.string(),
-      type:        v.string(),
-      title:       v.optional(v.string()),
-      body:        v.string(),
-      author:      v.string(),
-      subreddit:   v.string(),
-      url:         v.string(),
-      ups:         v.number(),
-      numComments: v.number(),
-      createdUtc:  v.number(),
+      postId:          v.string(),
+      type:            v.string(),
+      title:           v.optional(v.string()),
+      body:            v.string(),
+      author:          v.string(),
+      subreddit:       v.string(),
+      url:             v.string(),
+      ups:             v.number(),
+      numComments:     v.number(),
+      createdUtc:      v.number(),
+      matchedKeywords: v.optional(v.array(v.string())),
     })),
   },
   handler: async (ctx, { userId, posts }) => {
@@ -218,6 +247,13 @@ export const upsertResults = internalMutation({
       if (!existing) {
         await ctx.db.insert("redditResults", { userId, ...post, fetchedAt: now });
         newIds.push(post.postId);
+      } else if (post.matchedKeywords && post.matchedKeywords.length > 0) {
+        // Merge newly-matching keywords into the existing row so the audit
+        // column reflects every keyword that ever caused a hit.
+        const merged = Array.from(
+          new Set([...(existing.matchedKeywords ?? []), ...post.matchedKeywords]),
+        );
+        await ctx.db.patch(existing._id, { matchedKeywords: merged });
       }
     }
     return newIds;
@@ -394,18 +430,23 @@ export const globalFetch = internalAction({
         const keywordsLower = keywords.map((k) => k.toLowerCase());
         const excludedLower = excluded.map((e) => e.toLowerCase());
 
+        // Keep the original keyword string (user's casing) paired with its
+        // lowercase form so the stored matchedKeywords list reads naturally.
+        const kwPairs = keywords.map((k) => ({ raw: k, lc: k.toLowerCase() }));
+
         const matched = filteredPosts
-          .filter((p) => {
-            if (!allowedSubs.has((p.subreddit ?? "").toLowerCase())) return false;
+          .map((p) => {
+            if (!allowedSubs.has((p.subreddit ?? "").toLowerCase())) return null;
             const title = (p.title ?? "").toLowerCase();
-            if (!keywordsLower.some((k) => title.includes(k))) return false;
-            if ((p.ups ?? 0) < minUpvotes) return false;
-            if ((p.num_comments ?? 0) < minComments) return false;
+            const hits = kwPairs.filter((k) => title.includes(k.lc)).map((k) => k.raw);
+            if (hits.length === 0) return null;
+            if ((p.ups ?? 0) < minUpvotes) return null;
+            if ((p.num_comments ?? 0) < minComments) return null;
             const text = `${p.title ?? ""} ${p.selftext ?? ""}`.toLowerCase();
-            if (excludedLower.some((e) => text.includes(e))) return false;
-            return true;
+            if (excludedLower.some((e) => text.includes(e))) return null;
+            return { ...mapRedditPost(p), matchedKeywords: hits };
           })
-          .map(mapRedditPost);
+          .filter((p): p is ReturnType<typeof mapRedditPost> & { matchedKeywords: string[] } => p !== null);
 
         if (matched.length === 0) {
           console.log(`[NORMAL] ${tag} | kw-matched=0 (no titles matched keywords)`);
@@ -485,6 +526,11 @@ export const globalFetch = internalAction({
             if (pairs.length > 0) {
               await ctx.runMutation(internal.aiFilter.appendMatchedPosts, {
                 userId, entries: pairs,
+              });
+              // Denormalize onto each redditResultsAi row so the column shows
+              // which intent queries matched that post.
+              await ctx.runMutation(internal.reddit.tagAiPostsWithIntents, {
+                userId, pairs,
               });
             }
             for (const id of newMatches) newPostIdsForAlerts.add(id);
