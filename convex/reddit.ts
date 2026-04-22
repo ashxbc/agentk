@@ -2,7 +2,7 @@ import { action, internalAction, internalMutation, internalQuery, query } from "
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
-import { matchPostsToIntents } from "./aiFilter";
+import { matchPostsToIntents, normalizeIntent } from "./aiFilter";
 
 const SIX_HOURS_SEC  = 6 * 3600;
 const SIX_HOURS_MS   = SIX_HOURS_SEC * 1000;
@@ -446,31 +446,54 @@ export const globalFetch = internalAction({
             });
             const duplicates = aiCandidates.length - insertedCandidates.length;
 
-            const { postIds: matchedIds, error } = await matchPostsToIntents(
-              aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
-              cleanIntents,
-              apiKey,
-              `AI ${tag}`,
-            );
+            // Classify per intent so each match is tagged with the intent
+            // that produced it. Removing an intent from the toolbar then
+            // cleanly hides posts that were matched only by that intent.
+            const entries: { postId: string; intent: string }[] = [];
+            const uniqueMatchedIds = new Set<string>();
+            let anyError = false;
+            const perIntentCounts: string[] = [];
 
-            if (error) {
+            for (const rawIntent of cleanIntents) {
+              const intentKey = normalizeIntent(rawIntent);
+              if (!intentKey) continue;
+              const { postIds: matched, error } = await matchPostsToIntents(
+                aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
+                [rawIntent],
+                apiKey,
+                `AI ${tag} intent="${intentKey.slice(0, 40)}"`,
+              );
+              if (error) {
+                anyError = true;
+                perIntentCounts.push(`"${intentKey.slice(0, 24)}"=ERR`);
+                continue;
+              }
+              for (const pid of matched) {
+                entries.push({ postId: pid, intent: intentKey });
+                uniqueMatchedIds.add(pid);
+              }
+              perIntentCounts.push(`"${intentKey.slice(0, 24)}"=${matched.length}`);
+            }
+
+            const insertedSet = new Set(insertedCandidates);
+            const newMatches = [...uniqueMatchedIds].filter((id) => insertedSet.has(id));
+
+            if (anyError && uniqueMatchedIds.size === 0) {
               console.warn(
                 `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | classifier=ERROR`,
               );
             } else {
-              // Count matches that are on posts newly inserted this run
-              const insertedSet = new Set(insertedCandidates);
-              const newMatches = matchedIds.filter((id) => insertedSet.has(id));
               console.log(
-                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | intent-matched=${matchedIds.length} | new-matched=${newMatches.length}`,
+                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | per-intent=[${perIntentCounts.join(", ")}] | unique-matched=${uniqueMatchedIds.size} | new-matched=${newMatches.length}`,
               );
-              if (matchedIds.length > 0) {
-                await ctx.runMutation(internal.aiFilter.appendMatchedPostIds, {
-                  userId, postIds: matchedIds,
-                });
-              }
-              for (const id of newMatches) newPostIdsForAlerts.add(id);
             }
+
+            if (entries.length > 0) {
+              await ctx.runMutation(internal.aiFilter.appendMatchedPosts, {
+                userId, entries,
+              });
+            }
+            for (const id of newMatches) newPostIdsForAlerts.add(id);
           }
         }
       } else {

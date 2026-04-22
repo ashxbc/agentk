@@ -706,7 +706,21 @@ export default function RedditFeed({ posts, loading }: Props) {
       // Strict: never fall back to normal-mode posts. If any AI dependency is
       // unloaded, return []. Normal posts must never render under AI mode.
       if (aiCandidatePosts === undefined || aiSettings === undefined) return [];
-      const matchedIds = new Set(aiSettings?.matchedPostIds ?? []);
+      // Build the live intent allow-list from the toolbar state. Normalize
+      // (trim / collapse whitespace / lowercase) to match how the backend
+      // stores the intent key on each match entry.
+      const activeIntents = new Set(
+        (aiSettings?.intents ?? [])
+          .map((s) => s.trim().replace(/\s+/g, " ").toLowerCase())
+          .filter(Boolean),
+      );
+      // Posts are included only if at least one of their matching intents is
+      // still present in the toolbar. Removing an intent instantly hides its
+      // posts. matchedPosts is authoritative; legacy matchedPostIds is ignored.
+      const liveMatches = (aiSettings?.matchedPosts ?? []).filter((e) =>
+        activeIntents.has(e.intent),
+      );
+      const matchedIds = new Set(liveMatches.map((e) => e.postId));
       // Sort newest → oldest so the top of the canvas is the freshest post,
       // matching the normal feed's order.
       return aiCandidatePosts

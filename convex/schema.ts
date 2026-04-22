@@ -105,6 +105,11 @@ export default defineSchema({
     userId:         v.id("users"),
     intents:        v.array(v.string()),
     subreddits:     v.array(v.string()),
+    // Each entry pairs a matched postId with the specific intent (normalized)
+    // that matched it. The client filters by the current intent set, so
+    // removing an intent from the toolbar instantly hides its posts.
+    matchedPosts:   v.optional(v.array(v.object({ postId: v.string(), intent: v.string() }))),
+    // Legacy: kept optional for backward-compat with old rows. Not written anymore.
     matchedPostIds: v.optional(v.array(v.string())),
   }).index("by_user", ["userId"]),
 
