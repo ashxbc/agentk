@@ -82,13 +82,11 @@ export default function AuthModal({ isOpen, onClose }: Props) {
       await signIn("password", fd);
       window.location.href = "/dashboard";
       handleClose();
-    } catch (err: any) {
-      const msg = err?.message ?? "";
-      if (msg.toLowerCase().includes("invalid") || msg.toLowerCase().includes("not found") || msg.toLowerCase().includes("no account")) {
-        setError("Account does not exist. Please use the correct credentials or sign up.");
-      } else {
-        setError(msg || "Invalid credentials.");
-      }
+    } catch {
+      // Convex Auth returns opaque errors for both "no such account" and
+      // "wrong password" to avoid account enumeration. Show a single clear
+      // message that covers both and points the user to sign-up.
+      setError("No account found with these credentials. Please check your email and password, or create a new account.");
     } finally {
       setLoading(false);
     }
