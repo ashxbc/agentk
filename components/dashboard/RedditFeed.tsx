@@ -707,7 +707,11 @@ export default function RedditFeed({ posts, loading }: Props) {
       // unloaded, return []. Normal posts must never render under AI mode.
       if (aiCandidatePosts === undefined || aiSettings === undefined) return [];
       const matchedIds = new Set(aiSettings?.matchedPostIds ?? []);
-      return aiCandidatePosts.filter((p) => matchedIds.has(p.postId));
+      // Sort newest → oldest so the top of the canvas is the freshest post,
+      // matching the normal feed's order.
+      return aiCandidatePosts
+        .filter((p) => matchedIds.has(p.postId))
+        .sort((a, b) => b.createdUtc - a.createdUtc);
     }
     return posts;
   }, [feedMode, aiCandidatePosts, aiSettings, posts]);

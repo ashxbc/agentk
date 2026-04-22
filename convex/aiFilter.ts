@@ -208,7 +208,7 @@ OUTPUT — return ONLY a JSON array of matching postIds as strings, e.g. ["abc12
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "moonshotai/kimi-k2-0905",
         temperature: 0,
         messages: [{ role: "user", content: prompt }],
       }),

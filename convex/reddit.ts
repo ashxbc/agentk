@@ -380,20 +380,21 @@ export const globalFetch = internalAction({
       const normalS = normalByUser.get(userIdStr);
       const aiS     = aiByUser.get(userIdStr);
       const userId  = (normalS?.userId ?? aiS!.userId);
+      const tag     = `user=${userId}`;
 
-      // Cleanup expired posts for this user (>6h)
+      // Cleanup expired posts for this user (>6h) — both tables.
       await ctx.runMutation(internal.reddit.deleteExpiredForUser, { userId });
 
       const newPostIdsForAlerts = new Set<string>();
 
-      // --- Normal flow: keyword match + upsert ---
+      // ═══ NORMAL FLOW ═══════════════════════════════════════════════
       if (normalS) {
         const { keywords, subreddits, excluded, minUpvotes, minComments } = normalS;
         const allowedSubs   = new Set(subreddits.map((s) => s.toLowerCase()));
         const keywordsLower = keywords.map((k) => k.toLowerCase());
         const excludedLower = excluded.map((e) => e.toLowerCase());
 
-        const userPosts = filteredPosts
+        const matched = filteredPosts
           .filter((p) => {
             if (!allowedSubs.has((p.subreddit ?? "").toLowerCase())) return false;
             const title = (p.title ?? "").toLowerCase();
@@ -406,60 +407,74 @@ export const globalFetch = internalAction({
           })
           .map(mapRedditPost);
 
-        console.log(`[globalFetch] user ${userId} normal: matched ${userPosts.length}`);
-
-        if (userPosts.length > 0) {
+        if (matched.length === 0) {
+          console.log(`[NORMAL] ${tag} | kw-matched=0 (no titles matched keywords)`);
+        } else {
           const inserted: string[] = await ctx.runMutation(internal.reddit.upsertResults, {
-            userId, posts: userPosts,
+            userId, posts: matched,
           });
-          console.log(`[globalFetch] user ${userId} normal: inserted ${inserted.length} new`);
+          const duplicates = matched.length - inserted.length;
+          console.log(
+            `[NORMAL] ${tag} | kw-matched=${matched.length} | inserted=${inserted.length} new | duplicate=${duplicates}`,
+          );
           for (const id of inserted) newPostIdsForAlerts.add(id);
         }
+      } else {
+        console.log(`[NORMAL] ${tag} | skipped (no keyword/subreddit settings)`);
       }
 
-      // --- AI flow: upsert AI-sub candidates + Gemini intent match ---
-      if (aiS && apiKey) {
+      // ═══ AI FLOW ═══════════════════════════════════════════════════
+      if (aiS) {
         const { intents, subreddits } = aiS;
         const cleanIntents = intents.filter(Boolean);
-        if (cleanIntents.length > 0 && subreddits.length > 0) {
+
+        if (cleanIntents.length === 0 || subreddits.length === 0) {
+          console.log(`[AI]     ${tag} | skipped (intents=${cleanIntents.length}, subs=${subreddits.length})`);
+        } else if (!apiKey) {
+          console.warn(`[AI]     ${tag} | skipped (OPENROUTER_API_KEY not set)`);
+        } else {
           const allowedSubs = new Set(subreddits.map((s) => s.toLowerCase()));
           const aiCandidates = filteredPosts
             .filter((p) => allowedSubs.has((p.subreddit ?? "").toLowerCase()))
             .map(mapRedditPost);
 
-          console.log(`[globalFetch] user ${userId} AI: candidates ${aiCandidates.length}`);
-
-          if (aiCandidates.length > 0) {
-            // Upsert the full candidate pool into the ISOLATED AI table.
-            // Normal-flow posts live in redditResults; AI-flow posts live in redditResultsAi.
+          if (aiCandidates.length === 0) {
+            console.log(`[AI]     ${tag} | candidates=0 (no posts in AI subs this cycle)`);
+          } else {
             const insertedCandidates: string[] = await ctx.runMutation(internal.reddit.upsertAiCandidates, {
               userId, posts: aiCandidates,
             });
-            console.log(`[globalFetch] user ${userId} AI: inserted ${insertedCandidates.length} candidates`);
+            const duplicates = aiCandidates.length - insertedCandidates.length;
 
-            // Ask Gemini which candidates match the user's intents
             const { postIds: matchedIds, error } = await matchPostsToIntents(
               aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
               cleanIntents,
               apiKey,
-              `globalFetch:ai:${userId}`,
+              `AI ${tag}`,
             );
-            console.log(`[globalFetch] user ${userId} AI: matched ${matchedIds.length}, error: ${error}`);
 
-            // Persist matched IDs so the client can render AI results without a manual trigger.
-            if (!error && matchedIds.length > 0) {
-              await ctx.runMutation(internal.aiFilter.appendMatchedPostIds, {
-                userId, postIds: matchedIds,
-              });
-            }
-
-            // Only fire alerts for matched posts that are newly inserted this run
-            const insertedSet = new Set(insertedCandidates);
-            for (const id of matchedIds) {
-              if (insertedSet.has(id)) newPostIdsForAlerts.add(id);
+            if (error) {
+              console.warn(
+                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | classifier=ERROR`,
+              );
+            } else {
+              // Count matches that are on posts newly inserted this run
+              const insertedSet = new Set(insertedCandidates);
+              const newMatches = matchedIds.filter((id) => insertedSet.has(id));
+              console.log(
+                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | intent-matched=${matchedIds.length} | new-matched=${newMatches.length}`,
+              );
+              if (matchedIds.length > 0) {
+                await ctx.runMutation(internal.aiFilter.appendMatchedPostIds, {
+                  userId, postIds: matchedIds,
+                });
+              }
+              for (const id of newMatches) newPostIdsForAlerts.add(id);
             }
           }
         }
+      } else {
+        console.log(`[AI]     ${tag} | skipped (no AI mode settings)`);
       }
 
       // --- Fire alerts once per user (combined normal + AI new posts) ---
