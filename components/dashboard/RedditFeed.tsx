@@ -832,12 +832,13 @@ export default function RedditFeed({ posts, loading }: Props) {
 
         const title = p.title || p.body.slice(0, 120);
         const subColor = getSubredditColor(p.subreddit);
-        // Save-to-Leads bookmark icon — normal mode only. Pre-saved state
-        // reflects if this postId is already in our session's savedPostIds set.
+        // Save-to-Leads bookmark icon — normal mode only, bottom-right corner.
+        // Pre-saved state reflects if this postId is already in our session's
+        // savedPostIds set.
         const alreadySaved = feedMode === "normal" && savedPostIdsRef.current.has(p.postId);
         const saveBtnHTML = feedMode === "normal" ? `
-        <div class="kf-save" role="button" aria-label="Add to leads" title="Add to leads" style="position:absolute;top:9px;left:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;z-index:2;color:${alreadySaved ? "#DF849D" : "#B2A28C"};transition:color .15s ease, background .15s ease">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="${alreadySaved ? "#DF849D" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        <div class="kf-save" role="button" aria-label="Add to leads" style="position:absolute;bottom:7px;right:8px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;z-index:3;color:${alreadySaved ? "#DF849D" : "#B2A28C"};transition:color .15s ease, background .15s ease">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="${alreadySaved ? "#DF849D" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
         </div>` : "";
         card.innerHTML = `${saveBtnHTML}
         <div class="kf" style="position:absolute;top:9px;right:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:default;z-index:2">
@@ -861,10 +862,6 @@ export default function RedditFeed({ posts, loading }: Props) {
           <div style="display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:#f6f7f8;font-size:9.5px;font-weight:700;color:#878a8c">
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             ${formatCount(p.numComments)}
-          </div>
-          <div style="display:flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;background:#f6f7f8;font-size:9.5px;font-weight:700;color:#878a8c">
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
-            Share
           </div>
         </div>`;
 
@@ -1018,11 +1015,13 @@ export default function RedditFeed({ posts, loading }: Props) {
         }
       `}</style>
 
-      {/* "Lead added" toast — centered over the feed, fade in/out. Keyed on
-          toastKey so every save remounts the node and restarts the animation. */}
+      {/* "Lead added" toast — centered over the feed, fade in/out once per
+          save. We unmount after the animation ends so tab-switches (which
+          toggle display:none on the parent) can't restart the animation. */}
       {toastKey > 0 && (
         <div
           key={toastKey}
+          onAnimationEnd={() => setToastKey(0)}
           style={{
             position: "absolute",
             top: "50%",
@@ -1044,7 +1043,6 @@ export default function RedditFeed({ posts, loading }: Props) {
             fontWeight: 600,
             color: "#191918",
             letterSpacing: "-0.005em",
-            boxShadow: "0 6px 28px rgba(0,0,0,0.06)",
           }}
         >
           <span style={{

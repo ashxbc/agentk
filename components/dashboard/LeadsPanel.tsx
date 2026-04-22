@@ -176,7 +176,7 @@ export default function LeadsPanel() {
                   key={l._id}
                   onClick={() => !isRenaming && setOpenListId(l._id)}
                   style={{
-                    display: "flex", alignItems: "center", gap: 14,
+                    display: "flex", alignItems: "center", gap: 10,
                     padding: "16px 18px",
                     borderTop: i === 0 ? "none" : `1px solid ${BORDER}`,
                     cursor: isRenaming ? "default" : "pointer",
@@ -185,16 +185,6 @@ export default function LeadsPanel() {
                   onMouseEnter={(e) => { if (!isRenaming) (e.currentTarget as HTMLElement).style.background = BG; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                 >
-                  <div style={{
-                    width: 32, height: 32, borderRadius: 10, flexShrink: 0,
-                    background: "rgba(223,132,157,0.08)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: ACCENT,
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                    </svg>
-                  </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {isRenaming ? (
                       <input
@@ -234,8 +224,10 @@ export default function LeadsPanel() {
                       setRenamingId(l._id);
                       setRenameVal(l.name);
                     }}
-                    title="Rename"
+                    aria-label="Rename list"
                     style={iconBtn}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = TEXT; (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = MUTED; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -249,8 +241,10 @@ export default function LeadsPanel() {
                         await deleteList({ listId: l._id });
                       }
                     }}
-                    title="Delete"
+                    aria-label="Delete list"
                     style={iconBtn}
+                    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = TEXT; (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
+                    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = MUTED; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="3 6 5 6 21 6"/>
@@ -350,14 +344,14 @@ function LeadListView({
 
   return (
     <div style={{ flex: 1, background: BG, overflow: "auto" }}>
-      <div style={{ maxWidth: 820, margin: "0 auto", padding: "56px 40px 80px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "48px 40px 80px" }}>
         {/* Back */}
         <button
           onClick={onBack}
           style={{
             background: "transparent", border: "none", padding: 0, cursor: "pointer",
             color: MUTED, fontSize: 12, fontWeight: 500,
-            display: "flex", alignItems: "center", gap: 6, marginBottom: 20,
+            display: "flex", alignItems: "center", gap: 6, marginBottom: 18,
           }}
           onMouseEnter={(e) => (e.currentTarget.style.color = TEXT)}
           onMouseLeave={(e) => (e.currentTarget.style.color = MUTED)}
@@ -369,7 +363,7 @@ function LeadListView({
         </button>
 
         {/* Header */}
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, marginBottom: 32 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 16, marginBottom: 24 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {editing ? (
               <input
@@ -394,7 +388,6 @@ function LeadListView({
                   fontSize: 28, fontWeight: 800, color: TEXT, letterSpacing: "-0.02em",
                   margin: 0, lineHeight: 1.1, cursor: "text",
                 }}
-                title="Click to rename"
               >
                 {listName}
               </h1>
@@ -431,7 +424,9 @@ function LeadListView({
                 if (confirm(`Delete "${listName}"?`)) await onDelete();
               }}
               style={iconBtn}
-              title="Delete list"
+              aria-label="Delete list"
+              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = TEXT; (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = MUTED; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="3 6 5 6 21 6"/>
@@ -441,102 +436,168 @@ function LeadListView({
           </div>
         </div>
 
-        {/* Lead rows */}
+        {/* Spreadsheet */}
         {leads === undefined ? (
           <EmptyBlock label="Loading…" />
         ) : leads.length === 0 ? (
           <EmptyBlock label="No leads here yet." />
         ) : (
-          <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
-            {leads.map((lead, i) => (
-              <LeadRow
-                key={lead._id}
-                lead={lead}
-                first={i === 0}
-                onRemove={() => onRemoveLead(lead._id)}
-              />
-            ))}
-          </div>
+          <LeadTable leads={leads} onRemove={(id) => onRemoveLead(id)} />
         )}
       </div>
     </div>
   );
 }
 
-function LeadRow({ lead, first, onRemove }: { lead: Lead; first: boolean; onRemove: () => void }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// Spreadsheet table
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LeadTable({ leads, onRemove }: { leads: Lead[]; onRemove: (id: Id<"leads">) => void }) {
+  return (
+    <div style={{
+      background: CARD_BG,
+      border: `1px solid ${BORDER}`,
+      borderRadius: 12,
+      overflow: "hidden",
+    }}>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{
+          width: "100%",
+          borderCollapse: "collapse",
+          fontSize: 13,
+          color: BODY,
+          tableLayout: "fixed",
+        }}>
+          <colgroup>
+            <col style={{ width: "34%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "14%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "7%" }} />
+            <col style={{ width: "13%" }} />
+            <col style={{ width: "40px" }} />
+          </colgroup>
+          <thead>
+            <tr style={{ background: "#FAF6EF" }}>
+              <Th>Title</Th>
+              <Th>Subreddit</Th>
+              <Th>Author</Th>
+              <Th align="right">Upvotes</Th>
+              <Th align="right">Comments</Th>
+              <Th align="right">Age</Th>
+              <Th>Query</Th>
+              <Th />
+            </tr>
+          </thead>
+          <tbody>
+            {leads.map((lead, i) => (
+              <LeadTableRow
+                key={lead._id}
+                lead={lead}
+                first={i === 0}
+                onRemove={() => onRemove(lead._id)}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function Th({ children, align = "left" }: { children?: React.ReactNode; align?: "left" | "right" }) {
+  return (
+    <th style={{
+      padding: "10px 14px",
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: "0.02em",
+      textTransform: "uppercase",
+      color: MUTED,
+      textAlign: align,
+      borderBottom: `1px solid ${BORDER}`,
+      background: "#FAF6EF",
+      position: "sticky",
+      top: 0,
+      zIndex: 1,
+    }}>
+      {children}
+    </th>
+  );
+}
+
+function LeadTableRow({ lead, first, onRemove }: { lead: Lead; first: boolean; onRemove: () => void }) {
   const [hover, setHover] = useState(false);
   const ageMin = Math.max(0, Math.floor((Date.now() / 1000 - lead.createdUtc) / 60));
   const ageStr = ageMin < 60 ? `${ageMin}m` : ageMin < 1440 ? `${Math.floor(ageMin / 60)}h` : `${Math.floor(ageMin / 1440)}d`;
 
+  const cellBase: React.CSSProperties = {
+    padding: "12px 14px",
+    borderTop: first ? "none" : `1px solid ${BORDER}`,
+    verticalAlign: "middle",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  };
+
   return (
-    <div
+    <tr
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{
-        padding: "16px 18px",
-        borderTop: first ? "none" : `1px solid ${BORDER}`,
-        transition: "background .12s ease",
-        background: hover ? BG : "transparent",
-        display: "flex", alignItems: "flex-start", gap: 14,
-      }}
+      style={{ background: hover ? "#FAF6EF" : "transparent", transition: "background .12s ease" }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
+      <td style={{ ...cellBase }}>
         <a
           href={lead.url}
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            fontSize: 14, fontWeight: 600, color: TEXT, textDecoration: "none",
-            letterSpacing: "-0.005em", lineHeight: 1.35,
-            overflow: "hidden", textOverflow: "ellipsis",
-            display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical",
-          } as React.CSSProperties}
+            color: TEXT, textDecoration: "none", fontWeight: 600, letterSpacing: "-0.005em",
+            display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
         >
           {lead.title}
         </a>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 6, fontSize: 12, color: MUTED, fontWeight: 400 }}>
-          <span>r/{lead.subreddit}</span>
-          <span>·</span>
-          <span>u/{lead.author}</span>
-          <span>·</span>
-          <span>{ageStr} ago</span>
-          <span>·</span>
-          <span>{lead.ups} ↑</span>
-          <span>·</span>
-          <span>{lead.numComments} 💬</span>
-        </div>
-        {lead.query && (
-          <div style={{
-            display: "inline-flex", alignItems: "center", gap: 6,
-            marginTop: 8, padding: "3px 9px",
-            background: lead.source === "ai" ? "rgba(223,132,157,0.10)" : "rgba(0,0,0,0.04)",
-            borderRadius: 999, fontSize: 11, fontWeight: 500,
-            color: lead.source === "ai" ? ACCENT : BODY,
-            maxWidth: "100%",
-          }}>
-            <span style={{ opacity: 0.7 }}>{lead.source === "ai" ? "intent" : "query"}</span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {lead.query}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <button
-        onClick={onRemove}
-        title="Remove from list"
-        style={{
-          ...iconBtn,
-          opacity: hover ? 1 : 0,
-          transition: "opacity .12s ease, color .15s ease",
-        }}
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"/>
-          <line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
-      </button>
-    </div>
+      </td>
+      <td style={{ ...cellBase, color: BODY }}>r/{lead.subreddit}</td>
+      <td style={{ ...cellBase, color: BODY }}>u/{lead.author}</td>
+      <td style={{ ...cellBase, color: BODY, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{lead.ups}</td>
+      <td style={{ ...cellBase, color: BODY, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{lead.numComments}</td>
+      <td style={{ ...cellBase, color: MUTED, textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{ageStr}</td>
+      <td style={{ ...cellBase }}>
+        <span style={{
+          display: "inline-block", maxWidth: "100%",
+          padding: "2px 8px", borderRadius: 999,
+          background: lead.source === "ai" ? "rgba(223,132,157,0.10)" : "rgba(0,0,0,0.04)",
+          color: lead.source === "ai" ? ACCENT : BODY,
+          fontSize: 11, fontWeight: 500,
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {lead.query || "—"}
+        </span>
+      </td>
+      <td style={{ ...cellBase, textAlign: "right", padding: "12px 10px" }}>
+        <button
+          onClick={onRemove}
+          aria-label="Remove lead"
+          style={{
+            ...iconBtn,
+            width: 24, height: 24,
+            opacity: hover ? 1 : 0,
+            transition: "opacity .12s ease, color .15s ease, background .15s ease",
+          }}
+          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = TEXT; (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
+          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = MUTED; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </td>
+    </tr>
   );
 }
 
