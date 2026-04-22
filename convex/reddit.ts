@@ -119,6 +119,17 @@ export const getPostByUserPost = internalQuery({
   },
 });
 
+// Same as getPostByUserPost but for the isolated AI candidate table.
+export const getAiPostByUserPost = internalQuery({
+  args: { userId: v.id("users"), postId: v.string() },
+  handler: async (ctx, { userId, postId }) => {
+    return await ctx.db
+      .query("redditResultsAi")
+      .withIndex("by_user_post", (q) => q.eq("userId", userId).eq("postId", postId))
+      .first();
+  },
+});
+
 // ── Mutations ─────────────────────────────────────────────────────────────────
 
 // Hourly cron: purge posts older than 6h across all users

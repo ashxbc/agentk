@@ -295,15 +295,33 @@ export const sendAlerts = internalAction({
       const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "telegram" });
       if (alerted) continue;
 
-      const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
+      // Try the normal table first, then the isolated AI table.
+      const normalPost = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
+      const aiPost = normalPost
+        ? null
+        : await ctx.runQuery(internal.reddit.getAiPostByUserPost, { userId, postId });
+      const post = normalPost ?? aiPost;
       if (!post) continue;
 
       // Skip posts older than 30 minutes (Reddit post age, not fetch time)
       if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) continue;
 
-      // Compute matched keyword
-      const postText       = `${post.title ?? ""} ${post.body}`.toLowerCase();
-      const matchedKeyword = keywords.find((k) => postText.includes(k)) ?? "—";
+      // Compute the matched query. AI posts use matchedIntents (normalized
+      // query strings); normal posts use matchedKeywords with a substring
+      // fallback for rows written before that column existed.
+      let matchedQuery = "—";
+      if (aiPost) {
+        const intents = aiPost.matchedIntents ?? [];
+        if (intents.length > 0) matchedQuery = intents.join(", ");
+      } else if (normalPost) {
+        const stored = normalPost.matchedKeywords ?? [];
+        if (stored.length > 0) {
+          matchedQuery = stored.join(", ");
+        } else {
+          const postText = `${normalPost.title ?? ""} ${normalPost.body}`.toLowerCase();
+          matchedQuery = keywords.find((k) => postText.includes(k)) ?? "—";
+        }
+      }
 
       // Fetch author karma (best-effort)
       let karma = "—";
@@ -329,7 +347,7 @@ export const sendAlerts = internalAction({
       const title = esc(post.title ?? post.body.slice(0, 120));
       const alertText =
         `🔥 *${title}*\n\n` +
-        `🔑 Keyword: \`${esc(matchedKeyword)}\`\n` +
+        `🔑 Query: \`${esc(matchedQuery)}\`\n` +
         `📌 r/${esc(post.subreddit)}\n` +
         `⬆️ ${esc(String(post.ups))} upvotes · 💬 ${esc(String(post.numComments))} comments\n` +
         `👤 u/${esc(post.author)} · ${esc(karma)} karma`;

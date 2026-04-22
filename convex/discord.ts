@@ -291,15 +291,33 @@ export const sendDiscordAlerts = internalAction({
       const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "discord" });
       if (alerted) continue;
 
-      const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
+      // Try the normal table first, then the isolated AI table.
+      const normalPost = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
+      const aiPost = normalPost
+        ? null
+        : await ctx.runQuery(internal.reddit.getAiPostByUserPost, { userId, postId });
+      const post = normalPost ?? aiPost;
       if (!post) continue;
 
       // Skip posts older than 30 minutes (Reddit post age, not fetch time)
       if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) continue;
 
-      const postText       = `${post.title ?? ""} ${post.body}`.toLowerCase();
-      const matchedKeyword = keywords.find((k) => postText.includes(k)) ?? "—";
-      const title          = post.title ?? post.body.slice(0, 120);
+      // Compute the matched query (AI uses matchedIntents; normal uses
+      // matchedKeywords with a substring fallback).
+      let matchedQuery = "—";
+      if (aiPost) {
+        const intents = aiPost.matchedIntents ?? [];
+        if (intents.length > 0) matchedQuery = intents.join(", ");
+      } else if (normalPost) {
+        const stored = normalPost.matchedKeywords ?? [];
+        if (stored.length > 0) {
+          matchedQuery = stored.join(", ");
+        } else {
+          const postText = `${normalPost.title ?? ""} ${normalPost.body}`.toLowerCase();
+          matchedQuery = keywords.find((k) => postText.includes(k)) ?? "—";
+        }
+      }
+      const title = post.title ?? post.body.slice(0, 120);
 
       // Fetch karma (best-effort)
       let karmaStr = "—";
@@ -324,7 +342,7 @@ export const sendDiscordAlerts = internalAction({
         title:     title.slice(0, 256),
         url:       post.url,
         fields: [
-          { name: "🔑 Keyword",   value: `\`${matchedKeyword}\``,   inline: true },
+          { name: "🔑 Query",     value: `\`${matchedQuery}\``,     inline: true },
           { name: "📌 Subreddit", value: `r/${post.subreddit}`,     inline: true },
           { name: "⬆️ Upvotes",   value: String(post.ups),          inline: true },
           { name: "💬 Comments",  value: String(post.numComments),  inline: true },
