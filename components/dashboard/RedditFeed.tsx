@@ -605,9 +605,12 @@ export default function RedditFeed({ posts, loading }: Props) {
   const [aiSubInput, setAiSubInput]     = useState("");
   const aiSettings                      = useQuery(api.aiFilter.getAiSettings);
   const setAiSettingsMutation           = useMutation(api.aiFilter.setAiSettings);
+  // Always subscribe (not gated on feedMode) so the data is pre-warmed.
+  // When the user flips to AI mode, results render instantly instead of
+  // waiting for a cold Convex roundtrip.
   const aiCandidatePosts                = useQuery(
     api.aiFilter.getAiCandidatePosts,
-    feedMode === "ai" ? { subreddits: aiSubreddits } : "skip"
+    { subreddits: aiSubreddits }
   );
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
