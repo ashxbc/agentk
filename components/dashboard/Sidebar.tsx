@@ -16,35 +16,24 @@ export default function Sidebar({ activeTab, onTabChange }: Props) {
   const { signOut } = useAuthActions();
   const router = useRouter();
 
-  const LOCKED: ActiveTab[] = ["leads", "settings"];
-
-  const navItem = (tab: ActiveTab, icon: React.ReactNode, dataTour?: string) => {
-    const locked = LOCKED.includes(tab);
-    return (
-      <div style={{ position: "relative" }} className={locked ? "sidebar-locked" : undefined}>
-        <button
-          data-tour={dataTour}
-          onClick={() => { if (!locked) onTabChange(tab); }}
-          style={{
-            width: "34px", height: "34px", border: "none",
-            background: activeTab === tab ? "#DF849D" : "transparent",
-            borderRadius: "12px", cursor: locked ? "default" : "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: locked ? "#D8CECC" : activeTab === tab ? "#fff" : "#B2A28C",
-            transition: "all 0.2s ease", padding: 0,
-            opacity: locked ? 0.5 : 1,
-          }}
-          onMouseEnter={(e) => { if (!locked && activeTab !== tab) { (e.currentTarget as HTMLElement).style.background = "#FDF7EF"; (e.currentTarget as HTMLElement).style.color = "#191918"; } }}
-          onMouseLeave={(e) => { if (!locked && activeTab !== tab) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "#B2A28C"; } }}
-        >
-          {icon}
-        </button>
-        {locked && (
-          <div className="sidebar-tooltip">Coming soon</div>
-        )}
-      </div>
-    );
-  };
+  const navItem = (tab: ActiveTab, icon: React.ReactNode, dataTour?: string) => (
+    <button
+      data-tour={dataTour}
+      onClick={() => onTabChange(tab)}
+      style={{
+        width: "34px", height: "34px", border: "none",
+        background: activeTab === tab ? "#DF849D" : "transparent",
+        borderRadius: "12px", cursor: "pointer",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        color: activeTab === tab ? "#fff" : "#B2A28C",
+        transition: "all 0.2s ease", padding: 0,
+      }}
+      onMouseEnter={(e) => { if (activeTab !== tab) { (e.currentTarget as HTMLElement).style.background = "#FDF7EF"; (e.currentTarget as HTMLElement).style.color = "#191918"; } }}
+      onMouseLeave={(e) => { if (activeTab !== tab) { (e.currentTarget as HTMLElement).style.background = "transparent"; (e.currentTarget as HTMLElement).style.color = "#B2A28C"; } }}
+    >
+      {icon}
+    </button>
+  );
 
   async function handleSignOut() {
     await signOut();
@@ -63,28 +52,6 @@ export default function Sidebar({ activeTab, onTabChange }: Props) {
       <a href="/" style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "8px" }}>
         <Image src={logo} alt="agentK" height={32} priority />
       </a>
-
-      <style>{`
-        .sidebar-locked { position: relative; }
-        .sidebar-tooltip {
-          display: none;
-          position: absolute;
-          left: calc(100% + 10px);
-          top: 50%;
-          transform: translateY(-50%);
-          background: #191918;
-          color: #fff;
-          font-size: 11px;
-          font-weight: 600;
-          white-space: nowrap;
-          padding: 5px 10px;
-          border-radius: 8px;
-          pointer-events: none;
-          z-index: 99;
-          font-family: Inter, -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        .sidebar-locked:hover .sidebar-tooltip { display: block; }
-      `}</style>
 
       {/* Nav */}
       <nav style={{ display: "flex", flexDirection: "column", gap: "12px", flex: 1, alignItems: "center", justifyContent: "center" }}>
