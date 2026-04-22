@@ -15,6 +15,7 @@ import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as discord from "../discord.js";
 import type * as http from "../http.js";
+import type * as leads from "../leads.js";
 import type * as reddit from "../reddit.js";
 import type * as telegram from "../telegram.js";
 import type * as userSettings from "../userSettings.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   devices: typeof devices;
   discord: typeof discord;
   http: typeof http;
+  leads: typeof leads;
   reddit: typeof reddit;
   telegram: typeof telegram;
   userSettings: typeof userSettings;
