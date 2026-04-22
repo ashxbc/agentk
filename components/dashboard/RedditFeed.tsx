@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } fr
 import { createPortal } from "react-dom";
 import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 
 
 interface Post {
@@ -619,6 +620,9 @@ export default function RedditFeed({ posts, loading }: Props) {
   const createLeadList  = useMutation(api.leads.createList);
   const addLeadMutation = useMutation(api.leads.addLead);
   const [toastKey, setToastKey] = useState(0);
+  const [listPickerPost, setListPickerPost] = useState<Post | null>(null);
+  const [showAiListPicker, setShowAiListPicker] = useState(false);
+  const [aiTargetListId, setAiTargetListId] = useState<Id<"leadLists"> | null>(null);
 
   // Derived Set from the server query. Undefined until the query resolves;
   // an empty Set while unresolved is fine — cards render unsaved, then flip
@@ -662,6 +666,8 @@ export default function RedditFeed({ posts, loading }: Props) {
 
   const handleAddLeadRef = useRef(handleAddLead);
   handleAddLeadRef.current = handleAddLead;
+  const setListPickerPostRef = useRef(setListPickerPost);
+  setListPickerPostRef.current = setListPickerPost;
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -720,6 +726,13 @@ export default function RedditFeed({ posts, loading }: Props) {
     setAiIntents(loaded);
     setAiSubreddits(aiSettings.subreddits);
   }, [aiSettings]);
+
+  // Clear toast via timer so tab-switching mid-animation doesn't cause replay.
+  useEffect(() => {
+    if (toastKey === 0) return;
+    const id = setTimeout(() => setToastKey(0), 1700);
+    return () => clearTimeout(id);
+  }, [toastKey]);
 
   async function saveAiSettings(intents: string[], subs: string[]) {
     const clean = intents.filter(Boolean);
@@ -938,6 +951,13 @@ export default function RedditFeed({ posts, loading }: Props) {
             e.preventDefault();
             e.stopPropagation();
             if (saveEl.dataset.saved === "true") return;
+            // Multi-list: open picker without eager button flip; Convex reactive
+            // update will flip the bookmark once the mutation completes.
+            const lists = leadListsRef.current ?? [];
+            if (lists.length > 1 && !savedPostIdsRef.current.has(p.postId)) {
+              setListPickerPostRef.current(p);
+              return;
+            }
             saveEl.dataset.saved = "true";
             // Flip to filled + accent immediately so the click feels responsive.
             saveEl.style.color = "#DF849D";
@@ -1307,6 +1327,16 @@ export default function RedditFeed({ posts, loading }: Props) {
               <circle cx="10" cy="10" r="7"/>
               <line x1="3" y1="10" x2="17" y2="10"/>
               <path d="M10 3 Q13 7 13 10 Q13 13 10 17 Q7 13 7 10 Q7 7 10 3Z"/>
+            </svg>
+          </ToolkitBtn>
+          <ToolkitBtn
+            tip="Save to list"
+            active={!!aiTargetListId || showAiListPicker}
+            onClick={() => setShowAiListPicker(true)}
+          >
+            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 8l2-5h10l2 5"/>
+              <rect x="2" y="8" width="16" height="9" rx="1.5"/>
             </svg>
           </ToolkitBtn>
         </div>
@@ -1684,6 +1714,63 @@ export default function RedditFeed({ posts, loading }: Props) {
           </div>
         </FeedModal>
       )}
+
+      {/* Normal-mode multi-list picker */}
+      {listPickerPost && (
+        <ListSelectorModal
+          lists={leadLists ?? []}
+          onSelect={async (listId) => {
+            const p = listPickerPost;
+            setListPickerPost(null);
+            await addLeadMutation({
+              listId,
+              postId:      p.postId,
+              source:      "normal",
+              title:       p.title ?? p.body.slice(0, 200),
+              url:         p.url,
+              subreddit:   p.subreddit,
+              author:      p.author,
+              ups:         p.ups,
+              numComments: p.numComments,
+              createdUtc:  p.createdUtc,
+              query:       (p.matchedKeywords ?? []).join(", "),
+            });
+            setToastKey((k) => k + 1);
+          }}
+          onClose={() => setListPickerPost(null)}
+        />
+      )}
+
+      {/* AI mode — save all matched posts to a chosen list (autopilot) */}
+      {showAiListPicker && (
+        <ListSelectorModal
+          lists={leadLists ?? []}
+          onSelect={async (listId) => {
+            setAiTargetListId(listId);
+            setShowAiListPicker(false);
+            const postsToSave = displayPosts.filter((p) => !savedPostIds.has(p.postId));
+            for (const p of postsToSave) {
+              try {
+                await addLeadMutation({
+                  listId,
+                  postId:      p.postId,
+                  source:      "ai",
+                  title:       p.title ?? p.body.slice(0, 200),
+                  url:         p.url,
+                  subreddit:   p.subreddit,
+                  author:      p.author,
+                  ups:         p.ups,
+                  numComments: p.numComments,
+                  createdUtc:  p.createdUtc,
+                  query:       (aiSettings?.intents ?? []).join(", "),
+                });
+              } catch {}
+            }
+            if (postsToSave.length > 0) setToastKey((k) => k + 1);
+          }}
+          onClose={() => setShowAiListPicker(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1731,5 +1818,85 @@ function ToolkitBtn({
     >
       {children}
     </button>
+  );
+}
+
+function ListSelectorModal({
+  lists,
+  onSelect,
+  onClose,
+}: {
+  lists: Array<{ _id: Id<"leadLists">; name: string; count?: number }>;
+  onSelect: (listId: Id<"leadLists">) => void;
+  onClose: () => void;
+}) {
+  if (typeof document === "undefined") return null;
+  return createPortal(
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(25, 25, 24, 0.32)",
+          zIndex: 200,
+        }}
+      />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 201,
+          width: "min(280px, calc(100vw - 48px))",
+          background: "#fff",
+          border: "1px solid rgba(0,0,0,0.07)",
+          borderRadius: 14,
+          padding: "14px 10px 10px",
+        }}
+      >
+        <div style={{
+          fontSize: 9,
+          fontWeight: 800,
+          letterSpacing: "0.16em",
+          textTransform: "uppercase",
+          color: "#B2A28C",
+          padding: "0 8px 10px",
+        }}>
+          Save to list
+        </div>
+        {lists.length === 0 ? (
+          <div style={{ padding: "12px 8px", fontSize: 12, color: "#B2A28C", textAlign: "center" }}>
+            No lists yet. Create one in the Leads tab.
+          </div>
+        ) : lists.map((l) => (
+          <div
+            key={l._id}
+            onClick={() => onSelect(l._id)}
+            style={{
+              padding: "9px 12px",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 13,
+              fontWeight: 500,
+              color: "#191918",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#FDF7EF"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+          >
+            <span>{l.name}</span>
+            {l.count !== undefined && (
+              <span style={{ fontSize: 11, color: "#B2A28C", fontVariantNumeric: "tabular-nums" }}>{l.count}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </>,
+    document.body,
   );
 }
