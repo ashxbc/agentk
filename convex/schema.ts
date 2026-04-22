@@ -108,6 +108,35 @@ export default defineSchema({
     fetchedAt: v.number(),
   }).index("by_author", ["author"]),
 
+  // User-owned lists. A user starts with an auto-created "Inbox" list.
+  leadLists: defineTable({
+    userId:    v.id("users"),
+    name:      v.string(),
+    createdAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  // One lead per (list, post). Metadata snapshotted at add time so rows stay
+  // stable even after the source post ages out of redditResults(Ai).
+  leads: defineTable({
+    userId:      v.id("users"),
+    listId:      v.id("leadLists"),
+    postId:      v.string(),
+    source:      v.string(), // "normal" | "ai"
+    title:       v.string(),
+    url:         v.string(),
+    subreddit:   v.string(),
+    author:      v.string(),
+    ups:         v.number(),
+    numComments: v.number(),
+    createdUtc:  v.number(),
+    query:       v.string(), // matched keywords OR intents, joined with ", "
+    addedAt:     v.number(),
+  })
+    .index("by_user",      ["userId"])
+    .index("by_list",      ["listId"])
+    .index("by_list_post", ["listId", "postId"])
+    .index("by_user_post", ["userId", "postId"]),
+
   aiModeSettings: defineTable({
     userId:         v.id("users"),
     intents:        v.array(v.string()),

@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import Sidebar, { type ActiveTab } from "@/components/dashboard/Sidebar";
 import RedditFeed from "@/components/dashboard/RedditFeed";
+import LeadsPanel from "@/components/dashboard/LeadsPanel";
 import SettingsPanel from "@/components/dashboard/SettingsPanel";
 import ProductTour from "@/components/dashboard/ProductTour";
 
@@ -58,6 +59,11 @@ export default function DashboardPage() {
         {/* Reddit feed */}
         <div style={{ display: activeTab === "reddit" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
           <RedditFeed posts={posts ?? []} loading={posts === undefined} />
+        </div>
+
+        {/* Leads */}
+        <div style={{ display: activeTab === "leads" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
+          <LeadsPanel />
         </div>
 
         {/* Settings / TG bot */}
