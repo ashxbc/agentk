@@ -397,27 +397,29 @@ function LeadListView({
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+          <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
             <button
               onClick={handleExport}
               disabled={!leads || leads.length === 0}
               style={{
-                fontSize: 12, fontWeight: 600,
-                color: !leads || leads.length === 0 ? MUTED : "#fff",
-                background: !leads || leads.length === 0 ? "transparent" : TEXT,
-                border: `1px solid ${!leads || leads.length === 0 ? BORDER : TEXT}`,
-                padding: "8px 14px", borderRadius: 999,
+                ...iconBtn,
                 cursor: !leads || leads.length === 0 ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", gap: 6,
-                transition: "all .15s ease",
+                opacity: !leads || leads.length === 0 ? 0.4 : 1,
               }}
+              aria-label="Export CSV"
+              onMouseEnter={(e) => {
+                if (leads && leads.length > 0) {
+                  (e.currentTarget as HTMLElement).style.color = TEXT;
+                  (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)";
+                }
+              }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = MUTED; (e.currentTarget as HTMLElement).style.background = "transparent"; }}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="7 10 12 15 17 10"/>
                 <line x1="12" y1="15" x2="12" y2="3"/>
               </svg>
-              Export CSV
             </button>
             <button
               onClick={async () => {
@@ -480,7 +482,7 @@ function LeadTable({ leads, onRemove }: { leads: Lead[]; onRemove: (id: Id<"lead
             <col style={{ width: "40px" }} />
           </colgroup>
           <thead>
-            <tr style={{ background: "#FAF6EF" }}>
+            <tr style={{ background: CARD_BG }}>
               <Th>Title</Th>
               <Th>Subreddit</Th>
               <Th>Author</Th>
@@ -518,7 +520,7 @@ function Th({ children, align = "left" }: { children?: React.ReactNode; align?: 
       color: MUTED,
       textAlign: align,
       borderBottom: `1px solid ${BORDER}`,
-      background: "#FAF6EF",
+      background: CARD_BG,
       position: "sticky",
       top: 0,
       zIndex: 1,
@@ -546,7 +548,6 @@ function LeadTableRow({ lead, first, onRemove }: { lead: Lead; first: boolean; o
     <tr
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
-      style={{ background: hover ? "#FAF6EF" : "transparent", transition: "background .12s ease" }}
     >
       <td style={{ ...cellBase }}>
         <a

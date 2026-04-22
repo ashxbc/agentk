@@ -1035,24 +1035,13 @@ export default function RedditFeed({ posts, loading }: Props) {
             WebkitBackdropFilter: "blur(10px)",
             border: "1px solid rgba(0,0,0,0.06)",
             borderRadius: 999,
-            padding: "9px 16px 9px 12px",
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
+            padding: "9px 18px",
             fontSize: 13,
             fontWeight: 600,
             color: "#191918",
             letterSpacing: "-0.005em",
           }}
         >
-          <span style={{
-            width: 18, height: 18, borderRadius: 999, background: "#DF849D",
-            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-          }}>
-            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="20 6 9 17 4 12"/>
-            </svg>
-          </span>
           Lead added
         </div>
       )}
