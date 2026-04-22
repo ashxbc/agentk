@@ -23,8 +23,9 @@ export const getRecentPostsForUser = internalQuery({
     if (subreddits.length === 0) return [];
     const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
     const allowedSubs = new Set(subreddits.map((s) => s.toLowerCase()));
+    // Read from the isolated AI table only — no leakage from normal-flow posts.
     const posts = await ctx.db
-      .query("redditResults")
+      .query("redditResultsAi")
       .withIndex("by_user_created", (q) =>
         q.eq("userId", userId).gte("createdUtc", cutoffSec)
       )
@@ -43,8 +44,9 @@ export const getAiCandidatePosts = query({
     if (subreddits.length === 0) return [];
     const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
     const allowedSubs = new Set(subreddits.map((s) => s.toLowerCase()));
+    // Read from the isolated AI table only — no leakage from normal-flow posts.
     const posts = await ctx.db
-      .query("redditResults")
+      .query("redditResultsAi")
       .withIndex("by_user_created", (q) =>
         q.eq("userId", userId).gte("createdUtc", cutoffSec)
       )

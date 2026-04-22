@@ -24,6 +24,26 @@ export default defineSchema({
     .index("by_user_created", ["userId", "createdUtc"])
     .index("by_user_fetched", ["userId", "fetchedAt"]),
 
+  // Isolated storage for AI-mode candidate posts. Separate from redditResults
+  // so normal-flow (keyword-matched) posts never leak into the AI feed.
+  redditResultsAi: defineTable({
+    userId:      v.id("users"),
+    postId:      v.string(),
+    type:        v.string(),
+    title:       v.optional(v.string()),
+    body:        v.string(),
+    author:      v.string(),
+    subreddit:   v.string(),
+    url:         v.string(),
+    ups:         v.number(),
+    numComments: v.number(),
+    createdUtc:  v.number(),
+    fetchedAt:   v.number(),
+  })
+    .index("by_user",         ["userId"])
+    .index("by_user_post",    ["userId", "postId"])
+    .index("by_user_created", ["userId", "createdUtc"]),
+
   userSettings: defineTable({
     userId:        v.id("users"),
     keywords:      v.array(v.string()),

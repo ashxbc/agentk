@@ -145,6 +145,48 @@ export const deleteExpiredForUser = internalMutation({
       .filter((q) => q.lt(q.field("createdUtc"), cutoffSec))
       .collect();
     for (const doc of expired) await ctx.db.delete(doc._id);
+    // Also purge the isolated AI candidate pool for this user.
+    const expiredAi = await ctx.db
+      .query("redditResultsAi")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .filter((q) => q.lt(q.field("createdUtc"), cutoffSec))
+      .collect();
+    for (const doc of expiredAi) await ctx.db.delete(doc._id);
+  },
+});
+
+// Upsert AI-mode candidate posts into the isolated redditResultsAi table.
+// Returns only postIds that were newly inserted.
+export const upsertAiCandidates = internalMutation({
+  args: {
+    userId: v.id("users"),
+    posts: v.array(v.object({
+      postId:      v.string(),
+      type:        v.string(),
+      title:       v.optional(v.string()),
+      body:        v.string(),
+      author:      v.string(),
+      subreddit:   v.string(),
+      url:         v.string(),
+      ups:         v.number(),
+      numComments: v.number(),
+      createdUtc:  v.number(),
+    })),
+  },
+  handler: async (ctx, { userId, posts }) => {
+    const now = Date.now();
+    const newIds: string[] = [];
+    for (const post of posts) {
+      const existing = await ctx.db
+        .query("redditResultsAi")
+        .withIndex("by_user_post", (q) => q.eq("userId", userId).eq("postId", post.postId))
+        .first();
+      if (!existing) {
+        await ctx.db.insert("redditResultsAi", { userId, ...post, fetchedAt: now });
+        newIds.push(post.postId);
+      }
+    }
+    return newIds;
   },
 });
 
@@ -388,8 +430,9 @@ export const globalFetch = internalAction({
           console.log(`[globalFetch] user ${userId} AI: candidates ${aiCandidates.length}`);
 
           if (aiCandidates.length > 0) {
-            // Upsert the full candidate pool so getAiCandidatePosts can return them client-side
-            const insertedCandidates: string[] = await ctx.runMutation(internal.reddit.upsertResults, {
+            // Upsert the full candidate pool into the ISOLATED AI table.
+            // Normal-flow posts live in redditResults; AI-flow posts live in redditResultsAi.
+            const insertedCandidates: string[] = await ctx.runMutation(internal.reddit.upsertAiCandidates, {
               userId, posts: aiCandidates,
             });
             console.log(`[globalFetch] user ${userId} AI: inserted ${insertedCandidates.length} candidates`);
