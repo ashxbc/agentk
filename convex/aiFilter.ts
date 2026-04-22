@@ -34,24 +34,22 @@ export const getRecentPostsForUser = internalQuery({
   },
 });
 
-// Client query: all posts for AI mode (no keyword filter) for given subreddits
+// Client query: every AI-candidate post for this user in the last 6h.
+// No subreddit filter — the client intersects with aiSettings.matchedPostIds
+// so results stay stable even when the user edits subreddits mid-cycle.
+// The isolated redditResultsAi table already guarantees no normal-flow leakage.
 export const getAiCandidatePosts = query({
-  args: { subreddits: v.array(v.string()) },
-  handler: async (ctx, { subreddits }) => {
+  args: {},
+  handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    // Empty AI subreddits → empty AI feed (prevents normal-mode posts from leaking in).
-    if (subreddits.length === 0) return [];
     const cutoffSec = (Date.now() / 1000) - SIX_HOURS_SEC;
-    const allowedSubs = new Set(subreddits.map((s) => s.toLowerCase()));
-    // Read from the isolated AI table only — no leakage from normal-flow posts.
-    const posts = await ctx.db
+    return await ctx.db
       .query("redditResultsAi")
       .withIndex("by_user_created", (q) =>
         q.eq("userId", userId).gte("createdUtc", cutoffSec)
       )
       .collect();
-    return posts.filter((p) => allowedSubs.has(p.subreddit.toLowerCase()));
   },
 });
 

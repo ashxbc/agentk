@@ -606,12 +606,11 @@ export default function RedditFeed({ posts, loading }: Props) {
   const aiSettings                      = useQuery(api.aiFilter.getAiSettings);
   const setAiSettingsMutation           = useMutation(api.aiFilter.setAiSettings);
   // Always subscribe (not gated on feedMode) so the data is pre-warmed.
-  // When the user flips to AI mode, results render instantly instead of
-  // waiting for a cold Convex roundtrip.
-  const aiCandidatePosts                = useQuery(
-    api.aiFilter.getAiCandidatePosts,
-    { subreddits: aiSubreddits }
-  );
+  // No subreddit arg — server returns all AI candidates for this user; the
+  // client intersects with matchedPostIds. This keeps matched posts visible
+  // even when the user edits subreddits mid-cycle (change takes effect only
+  // at the next globalFetch).
+  const aiCandidatePosts                = useQuery(api.aiFilter.getAiCandidatePosts);
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
