@@ -1,7 +1,9 @@
 import type { ReactNode } from "react";
 
 export const metadata = {
-  title: "Dashboard | AgentK",
+  // Root layout already wraps titles with the "%s | AgentK" template.
+  // Passing the plain value here avoids the double-suffix.
+  title: "Dashboard",
 };
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
