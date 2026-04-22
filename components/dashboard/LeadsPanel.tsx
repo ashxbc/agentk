@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -49,6 +49,12 @@ export default function LeadsPanel() {
   const [renamingId, setRenamingId] = useState<Id<"leadLists"> | null>(null);
   const [renameVal, setRenameVal]   = useState("");
   const [toastKey, setToastKey]     = useState(0); // increments to show "Lead removed" toast
+  const [confirmState, setConfirmState] = useState<{
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
 
   // If open list was deleted elsewhere, drop back to overview.
   const openList = useMemo(
@@ -71,6 +77,13 @@ export default function LeadsPanel() {
 
   // Shared toast renderer so both views use the same element.
   const toastNode = <RemovedToast toastKey={toastKey} onDone={() => setToastKey(0)} />;
+  const confirmNode = (
+    <ConfirmModal
+      state={confirmState}
+      onCancel={() => setConfirmState(null)}
+      onConfirmDone={() => setConfirmState(null)}
+    />
+  );
 
   // ── List-detail view ──────────────────────────────────────────────────────
   if (openList) {
@@ -81,9 +94,16 @@ export default function LeadsPanel() {
           listName={openList.name}
           onBack={() => setOpenListId(null)}
           onRename={(name) => renameList({ listId: openList._id, name })}
-          onDelete={async () => {
-            await deleteList({ listId: openList._id });
-            setOpenListId(null);
+          onDelete={() => {
+            setConfirmState({
+              title: "Delete this list?",
+              message: `"${openList.name}" and all its saved leads will be permanently removed. This can't be undone.`,
+              confirmLabel: "Delete",
+              onConfirm: async () => {
+                await deleteList({ listId: openList._id });
+                setOpenListId(null);
+              },
+            });
           }}
           onRemoveLead={async (leadId) => {
             await removeLead({ leadId });
@@ -91,6 +111,7 @@ export default function LeadsPanel() {
           }}
         />
         {toastNode}
+        {confirmNode}
       </div>
     );
   }
@@ -248,11 +269,14 @@ export default function LeadsPanel() {
                     </svg>
                   </button>
                   <button
-                    onClick={async (e) => {
+                    onClick={(e) => {
                       e.stopPropagation();
-                      if (confirm(`Delete "${l.name}"? Its leads will be removed.`)) {
-                        await deleteList({ listId: l._id });
-                      }
+                      setConfirmState({
+                        title: "Delete this list?",
+                        message: `"${l.name}" and all its saved leads will be permanently removed. This can't be undone.`,
+                        confirmLabel: "Delete",
+                        onConfirm: async () => { await deleteList({ listId: l._id }); },
+                      });
                     }}
                     aria-label="Delete list"
                     style={iconBtn}
@@ -275,11 +299,145 @@ export default function LeadsPanel() {
         )}
       </div>
       {toastNode}
+      {confirmNode}
     </div>
   );
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function _unused() { return SOFT; }
+}
+
+// Native-feeling confirm modal matching the product design:
+// warm cream backdrop, white card with hairline border, no harsh shadow,
+// pill buttons, accent color reserved for the destructive action.
+function ConfirmModal({
+  state, onCancel, onConfirmDone,
+}: {
+  state: {
+    title: string;
+    message: string;
+    confirmLabel: string;
+    onConfirm: () => Promise<void> | void;
+  } | null;
+  onCancel: () => void;
+  onConfirmDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!state) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onCancel();
+      if (e.key === "Enter") handleConfirm();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+
+  if (!state) return null;
+
+  async function handleConfirm() {
+    if (!state || busy) return;
+    setBusy(true);
+    try {
+      await state.onConfirm();
+      onConfirmDone();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <style>{`
+        @keyframes kf-modal-backdrop-in { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes kf-modal-card-in {
+          from { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.98); }
+          to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+      `}</style>
+      <div
+        onClick={() => !busy && onCancel()}
+        style={{
+          position: "absolute",
+          inset: 0,
+          background: "rgba(25, 25, 24, 0.32)",
+          backdropFilter: "blur(6px)",
+          WebkitBackdropFilter: "blur(6px)",
+          zIndex: 50,
+          animation: "kf-modal-backdrop-in .18s ease-out",
+        }}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 51,
+          width: "min(420px, calc(100vw - 48px))",
+          background: "#ffffff",
+          border: "1px solid rgba(0,0,0,0.06)",
+          borderRadius: 16,
+          padding: "22px 22px 18px",
+          animation: "kf-modal-card-in .22s cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      >
+        <h3 style={{
+          fontSize: 16, fontWeight: 700, color: "#191918",
+          margin: 0, letterSpacing: "-0.01em",
+        }}>
+          {state.title}
+        </h3>
+        <p style={{
+          fontSize: 13, lineHeight: 1.5, color: "#62584F",
+          margin: "8px 0 22px", fontWeight: 400,
+        }}>
+          {state.message}
+        </p>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button
+            onClick={() => onCancel()}
+            disabled={busy}
+            style={{
+              fontSize: 12, fontWeight: 600, color: "#191918",
+              background: "transparent",
+              border: `1px solid rgba(0,0,0,0.08)`,
+              padding: "8px 16px", borderRadius: 999,
+              cursor: busy ? "not-allowed" : "pointer",
+              transition: "all .15s ease",
+            }}
+            onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.14)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.08)"; }}
+          >
+            Cancel
+          </button>
+          <button
+            autoFocus
+            onClick={handleConfirm}
+            disabled={busy}
+            style={{
+              fontSize: 12, fontWeight: 600, color: "#ffffff",
+              background: "#DF849D",
+              border: "1px solid #DF849D",
+              padding: "8px 16px", borderRadius: 999,
+              cursor: busy ? "progress" : "pointer",
+              transition: "all .15s ease",
+              opacity: busy ? 0.7 : 1,
+            }}
+            onMouseEnter={(e) => { if (!busy) (e.currentTarget as HTMLElement).style.background = "#D07890"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#DF849D"; }}
+          >
+            {busy ? "Deleting…" : state.confirmLabel}
+          </button>
+        </div>
+      </div>
+    </>
+  );
 }
 
 // "Lead removed" toast — same look as the Reddit feed's "Lead added" one.
@@ -352,7 +510,7 @@ function LeadListView({
   listName: string;
   onBack: () => void;
   onRename: (name: string) => Promise<unknown>;
-  onDelete: () => Promise<void>;
+  onDelete: () => void;
   onRemoveLead: (leadId: Id<"leads">) => Promise<unknown>;
 }) {
   const leads = useQuery(api.leads.getLeads, { listId }) as Lead[] | undefined;
@@ -478,9 +636,7 @@ function LeadListView({
               </svg>
             </button>
             <button
-              onClick={async () => {
-                if (confirm(`Delete "${listName}"?`)) await onDelete();
-              }}
+              onClick={() => onDelete()}
               style={iconBtn}
               aria-label="Delete list"
               onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = TEXT; (e.currentTarget as HTMLElement).style.background = "rgba(0,0,0,0.04)"; }}
