@@ -610,7 +610,7 @@ export default function RedditFeed({ posts, loading }: Props) {
   // client intersects with matchedPostIds. This keeps matched posts visible
   // even when the user edits subreddits mid-cycle (change takes effect only
   // at the next globalFetch).
-  const aiCandidatePosts                = useQuery(api.aiFilter.getAiCandidatePosts);
+  const aiCandidatePosts                = useQuery(api.aiFilter.getAiCandidatePosts, {});
 
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
