@@ -150,7 +150,7 @@ app.get("/r/:sub/new", requireApiKey, async (req, res) => {
   if (hit !== undefined) return res.json(hit);
 
   const { status, data, proxyHost } = await dedupFetch(cacheKey, () =>
-    fetchReddit(`https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=50`)
+    fetchReddit(`https://www.reddit.com/r/${encodeURIComponent(sub)}/new.json?limit=100`)
   );
 
   if (data) { subredditCache.set(cacheKey, data); res.set("X-Proxy-Host", proxyHost); return res.json(data); }
