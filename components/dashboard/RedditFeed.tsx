@@ -601,12 +601,15 @@ export default function RedditFeed({ posts, loading }: Props) {
   const keywords = keywordGroups[activeGroupIdx]?.keywords ?? [];
 
   // AI mode state
-  const [feedMode, setFeedMode]         = useState<"normal" | "ai">("normal");
-  const [aiIntents, setAiIntents]       = useState<string[]>(["", "", ""]);
-  const [aiSubreddits, setAiSubreddits] = useState<string[]>([]);
-  const [aiSubInput, setAiSubInput]     = useState("");
-  const aiSettings                      = useQuery(api.aiFilter.getAiSettings);
-  const setAiSettingsMutation           = useMutation(api.aiFilter.setAiSettings);
+  const [feedMode, setFeedMode]           = useState<"normal" | "ai">("normal");
+  const [aiIntents, setAiIntents]         = useState<string[]>(["", "", ""]);
+  const [aiSubreddits, setAiSubreddits]   = useState<string[]>([]);
+  const [aiSubInput, setAiSubInput]       = useState("");
+  const [intentListMapLocal, setIntentListMapLocal] = useState<Array<{ intent: string; listId: string }>>([]);
+  const [intentPickerIdx, setIntentPickerIdx]       = useState<number | null>(null);
+  const aiSettings                        = useQuery(api.aiFilter.getAiSettings);
+  const setAiSettingsMutation             = useMutation(api.aiFilter.setAiSettings);
+  const setIntentListMapMutation          = useMutation(api.aiFilter.setIntentListMap);
   // Always subscribe (not gated on feedMode) so the data is pre-warmed.
   // No subreddit arg — server returns all AI candidates for this user; the
   // client intersects with matchedPostIds. This keeps matched posts visible
@@ -621,8 +624,6 @@ export default function RedditFeed({ posts, loading }: Props) {
   const addLeadMutation = useMutation(api.leads.addLead);
   const [toastKey, setToastKey] = useState(0);
   const [listPickerPost, setListPickerPost] = useState<Post | null>(null);
-  const [showAiListPicker, setShowAiListPicker] = useState(false);
-  const [aiTargetListId, setAiTargetListId] = useState<Id<"leadLists"> | null>(null);
 
   // Derived Set from the server query. Undefined until the query resolves;
   // an empty Set while unresolved is fine — cards render unsaved, then flip
@@ -725,6 +726,7 @@ export default function RedditFeed({ posts, loading }: Props) {
       : ["", "", ""];
     setAiIntents(loaded);
     setAiSubreddits(aiSettings.subreddits);
+    setIntentListMapLocal(aiSettings.intentListMap ?? []);
   }, [aiSettings]);
 
   // Clear toast via timer so tab-switching mid-animation doesn't cause replay.
@@ -733,6 +735,35 @@ export default function RedditFeed({ posts, loading }: Props) {
     const id = setTimeout(() => setToastKey(0), 1700);
     return () => clearTimeout(id);
   }, [toastKey]);
+
+  // Autopilot: whenever AI matched posts update, auto-save any that belong to
+  // an intent that has a target list configured.
+  useEffect(() => {
+    const matches = aiSettings?.matchedPosts;
+    if (!matches?.length || !intentListMapLocal.length || !aiCandidatePosts) return;
+    const mapIndex = new Map(intentListMapLocal.map((e) => [e.intent, e.listId]));
+    for (const match of matches) {
+      const listId = mapIndex.get(match.intent);
+      if (!listId) continue;
+      if (savedPostIdsRef.current.has(match.postId)) continue;
+      const post = aiCandidatePosts.find((p) => p.postId === match.postId);
+      if (!post) continue;
+      addLeadMutation({
+        listId: listId as Id<"leadLists">,
+        postId: post.postId,
+        source: "ai",
+        title: post.title ?? post.body.slice(0, 200),
+        url: post.url,
+        subreddit: post.subreddit,
+        author: post.author,
+        ups: post.ups,
+        numComments: post.numComments,
+        createdUtc: post.createdUtc,
+        query: match.intent,
+      }).catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiSettings?.matchedPosts, intentListMapLocal]);
 
   async function saveAiSettings(intents: string[], subs: string[]) {
     const clean = intents.filter(Boolean);
@@ -1329,16 +1360,6 @@ export default function RedditFeed({ posts, loading }: Props) {
               <path d="M10 3 Q13 7 13 10 Q13 13 10 17 Q7 13 7 10 Q7 7 10 3Z"/>
             </svg>
           </ToolkitBtn>
-          <ToolkitBtn
-            tip="Save to list"
-            active={!!aiTargetListId || showAiListPicker}
-            onClick={() => setShowAiListPicker(true)}
-          >
-            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 8l2-5h10l2 5"/>
-              <rect x="2" y="8" width="16" height="9" rx="1.5"/>
-            </svg>
-          </ToolkitBtn>
         </div>
       )}
 
@@ -1626,32 +1647,58 @@ export default function RedditFeed({ posts, loading }: Props) {
         <FeedModal title="AI Intent" onClose={() => setActiveModal(null)}>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             <p style={{ fontSize: "11px", color: "#B2A28C", margin: 0 }}>Describe what you're looking for. Up to 3 intents, 60 chars each.</p>
-            {aiIntents.map((intent, idx) => (
-              <input
-                key={idx}
-                value={intent}
-                maxLength={60}
-                placeholder={`Intent ${idx + 1}…`}
-                onChange={(e) => {
-                  const next = [...aiIntents];
-                  next[idx] = e.target.value;
-                  setAiIntents(next);
-                }}
-                onBlur={() => saveAiSettings(aiIntents, aiSubreddits)}
-                style={{
-                  width: "100%",
-                  padding: "7px 10px",
-                  borderRadius: "8px",
-                  border: "1px solid rgba(0,0,0,0.1)",
-                  fontSize: "12px",
-                  color: "#191918",
-                  background: "#FAFAF8",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  fontFamily: "inherit",
-                }}
-              />
-            ))}
+            {aiIntents.map((intent, idx) => {
+              const normalizedIntent = intent.trim().replace(/\s+/g, " ").toLowerCase();
+              const mapping = intentListMapLocal.find((e) => e.intent === normalizedIntent);
+              const hasMapping = !!mapping && !!intent.trim();
+              const targetListName = hasMapping
+                ? (leadLists ?? []).find((l) => l._id === mapping!.listId)?.name
+                : null;
+              return (
+                <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <button
+                    title={targetListName ? `→ ${targetListName}` : "Save to list"}
+                    onClick={(e) => { e.stopPropagation(); setIntentPickerIdx(idx); }}
+                    style={{
+                      width: 22, height: 22, flexShrink: 0, border: "none", padding: 0,
+                      borderRadius: 6, cursor: "pointer", display: "flex",
+                      alignItems: "center", justifyContent: "center",
+                      background: hasMapping ? "rgba(223,132,157,0.14)" : "transparent",
+                      color: hasMapping ? "#DF849D" : "#C4B9AA",
+                      transition: "all .15s",
+                    }}
+                  >
+                    <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 8l2-5h10l2 5"/>
+                      <rect x="2" y="8" width="16" height="9" rx="1.5"/>
+                    </svg>
+                  </button>
+                  <input
+                    value={intent}
+                    maxLength={60}
+                    placeholder={`Intent ${idx + 1}…`}
+                    onChange={(e) => {
+                      const next = [...aiIntents];
+                      next[idx] = e.target.value;
+                      setAiIntents(next);
+                    }}
+                    onBlur={() => saveAiSettings(aiIntents, aiSubreddits)}
+                    style={{
+                      flex: 1,
+                      padding: "7px 10px",
+                      borderRadius: "8px",
+                      border: "1px solid rgba(0,0,0,0.1)",
+                      fontSize: "12px",
+                      color: "#191918",
+                      background: "#FAFAF8",
+                      outline: "none",
+                      boxSizing: "border-box" as const,
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
         </FeedModal>
       )}
@@ -1741,36 +1788,52 @@ export default function RedditFeed({ posts, loading }: Props) {
         />
       )}
 
-      {/* AI mode — save all matched posts to a chosen list (autopilot) */}
-      {showAiListPicker && (
-        <ListSelectorModal
-          lists={leadLists ?? []}
-          onSelect={async (listId) => {
-            setAiTargetListId(listId);
-            setShowAiListPicker(false);
-            const postsToSave = displayPosts.filter((p) => !savedPostIds.has(p.postId));
-            for (const p of postsToSave) {
-              try {
-                await addLeadMutation({
-                  listId,
-                  postId:      p.postId,
-                  source:      "ai",
-                  title:       p.title ?? p.body.slice(0, 200),
-                  url:         p.url,
-                  subreddit:   p.subreddit,
-                  author:      p.author,
-                  ups:         p.ups,
-                  numComments: p.numComments,
-                  createdUtc:  p.createdUtc,
-                  query:       (aiSettings?.intents ?? []).join(", "),
-                });
-              } catch {}
-            }
-            if (postsToSave.length > 0) setToastKey((k) => k + 1);
-          }}
-          onClose={() => setShowAiListPicker(false)}
-        />
-      )}
+      {/* AI mode — per-intent list picker */}
+      {intentPickerIdx !== null && (() => {
+        const idx = intentPickerIdx;
+        const intentText = aiIntents[idx] ?? "";
+        const normalizedIntent = intentText.trim().replace(/\s+/g, " ").toLowerCase();
+        const currentMapping = intentListMapLocal.find((e) => e.intent === normalizedIntent);
+        return (
+          <ListSelectorModal
+            lists={leadLists ?? []}
+            activeListId={currentMapping?.listId ?? null}
+            onSelect={async (listId) => {
+              setIntentPickerIdx(null);
+              if (!intentText.trim()) return;
+              const next = intentListMapLocal.filter((e) => e.intent !== normalizedIntent);
+              next.push({ intent: normalizedIntent, listId: listId as string });
+              setIntentListMapLocal(next);
+              await setIntentListMapMutation({ entries: next });
+              // Immediately save any currently-matched posts for this intent.
+              const matched = (aiSettings?.matchedPosts ?? []).filter(
+                (m) => m.intent === normalizedIntent && !savedPostIds.has(m.postId),
+              );
+              for (const m of matched) {
+                const post = (aiCandidatePosts ?? []).find((p) => p.postId === m.postId);
+                if (!post) continue;
+                try {
+                  await addLeadMutation({
+                    listId,
+                    postId:      post.postId,
+                    source:      "ai",
+                    title:       post.title ?? post.body.slice(0, 200),
+                    url:         post.url,
+                    subreddit:   post.subreddit,
+                    author:      post.author,
+                    ups:         post.ups,
+                    numComments: post.numComments,
+                    createdUtc:  post.createdUtc,
+                    query:       normalizedIntent,
+                  });
+                } catch {}
+              }
+              if (matched.length > 0) setToastKey((k) => k + 1);
+            }}
+            onClose={() => setIntentPickerIdx(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -1823,10 +1886,12 @@ function ToolkitBtn({
 
 function ListSelectorModal({
   lists,
+  activeListId,
   onSelect,
   onClose,
 }: {
   lists: Array<{ _id: Id<"leadLists">; name: string; count?: number }>;
+  activeListId?: string | null;
   onSelect: (listId: Id<"leadLists">) => void;
   onClose: () => void;
 }) {
@@ -1871,30 +1936,41 @@ function ListSelectorModal({
           <div style={{ padding: "12px 8px", fontSize: 12, color: "#B2A28C", textAlign: "center" }}>
             No lists yet. Create one in the Leads tab.
           </div>
-        ) : lists.map((l) => (
-          <div
-            key={l._id}
-            onClick={() => onSelect(l._id)}
-            style={{
-              padding: "9px 12px",
-              borderRadius: 8,
-              cursor: "pointer",
-              fontSize: 13,
-              fontWeight: 500,
-              color: "#191918",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#FDF7EF"; }}
-            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "transparent"; }}
-          >
-            <span>{l.name}</span>
-            {l.count !== undefined && (
-              <span style={{ fontSize: 11, color: "#B2A28C", fontVariantNumeric: "tabular-nums" }}>{l.count}</span>
-            )}
-          </div>
-        ))}
+        ) : lists.map((l) => {
+          const isActive = l._id === activeListId;
+          return (
+            <div
+              key={l._id}
+              onClick={() => onSelect(l._id)}
+              style={{
+                padding: "9px 12px",
+                borderRadius: 8,
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: isActive ? 600 : 500,
+                color: isActive ? "#DF849D" : "#191918",
+                background: isActive ? "rgba(223,132,157,0.08)" : "transparent",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+              }}
+              onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "#FDF7EF"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isActive ? "rgba(223,132,157,0.08)" : "transparent"; }}
+            >
+              <span>{l.name}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                {l.count !== undefined && (
+                  <span style={{ fontSize: 11, color: "#B2A28C", fontVariantNumeric: "tabular-nums" }}>{l.count}</span>
+                )}
+                {isActive && (
+                  <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="#DF849D" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="2 8 6 12 14 4"/>
+                  </svg>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </>,
     document.body,

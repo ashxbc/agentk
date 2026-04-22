@@ -147,6 +147,8 @@ export default defineSchema({
     matchedPosts:   v.optional(v.array(v.object({ postId: v.string(), intent: v.string() }))),
     // Legacy: kept optional for backward-compat with old rows. Not written anymore.
     matchedPostIds: v.optional(v.array(v.string())),
+    // Maps normalized intent → lead list ID for autopilot saving.
+    intentListMap:  v.optional(v.array(v.object({ intent: v.string(), listId: v.string() }))),
   }).index("by_user", ["userId"]),
 
 });
