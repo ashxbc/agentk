@@ -134,51 +134,71 @@ export async function matchPostsToIntents(
     .join("\n");
 
   const prompt =
-`You are an elite semantic relevance classifier for Reddit post titles. Your job: return ONLY the titles that genuinely satisfy at least one user intent. Precision matters far more than recall.
+`You are a precision-first semantic classifier for Reddit post titles. You will be evaluated only on the precision of your output. RECALL IS IRRELEVANT. An empty array is better than one incorrect match.
 
-USER INTENTS:
+═════════════════════════════════════════════════════════════════
+USER INTENTS (a title matches only if it FULLY satisfies at least one intent):
 ${intentsList}
 
-================================================================
-HOW TO DECIDE, PER TITLE
-For each title, silently answer these four questions. Include the postId ONLY if the answer to all four is YES.
+═════════════════════════════════════════════════════════════════
+STEP 1 — INTERPRET EACH INTENT (do this silently, then use it as the matching standard)
+For each intent, derive three things:
+  • SUBJECT      — the precise thing being talked about (not the field, not the community).
+  • AUTHOR ROLE  — who is writing: are they SHARING their own experience/result, ASKING others, OFFERING something, or STRUGGLING/COMPLAINING?
+  • STANCE       — the angle or sentiment required (positive outcome, problem, opinion against X, etc.).
+A title matches an intent only if all three align.
 
-Q1. TOPIC — Is the title's core subject the same subject as one of the intents? (not merely adjacent, not merely in the same field/community.)
-Q2. SHAPE — Does the title's speech-act match what the intent is looking for?
-    - If the intent describes someone SHARING / TELLING / RECOUNTING an experience or result → the title must itself be that sharing (a retrospective, a "here's what worked / happened / I learned" post). A question asking others for the same information is a REVERSED shape — EXCLUDE.
-    - If the intent describes someone SEEKING / ASKING / LOOKING FOR something → the title must be a request. A post announcing / offering / selling is REVERSED — EXCLUDE.
-    - If the intent describes someone HAVING A PROBLEM → the title must describe that problem from the author's POV, not a tutorial or a solution write-up.
-Q3. DIRECTION — Is the stance aligned? (intent "people who love X" excludes "people who hate X"; intent "devs struggling with Y" excludes "devs who solved Y".)
-Q4. SPECIFICITY — Can you point to concrete words in the title that prove the match, without inventing context or assuming what the body says?
+═════════════════════════════════════════════════════════════════
+STEP 2 — FOUR-GATE CHECK PER TITLE
+For each title, walk the four gates. Any FAIL, UNSURE, or "maybe" → EXCLUDE.
 
-If any answer is NO, UNSURE, or "maybe" → EXCLUDE.
+GATE A — SUBJECT MATCH
+   The title's primary subject IS the intent's subject. Not "in the same industry", not "mentions the word once", not "adjacent topic". If the title is about a *different* specific thing that happens to live in the same community, EXCLUDE.
 
-================================================================
-HARD EXCLUSIONS (always exclude, regardless of topic match)
-- Promotional / affiliate / "launch your X into our network" spam.
-- Cofounder search, hiring, "looking for teammate" posts (unless the intent is literally that).
-- Generic frameworks, listicles, or "here's how to do X in N steps" posts that don't recount the author's own experience.
-- Feedback requests ("thoughts?", "is this useful?", "feedback?") unless the intent is explicitly about asking for feedback.
-- Rants, memes, jokes, shower-thoughts, philosophical musings.
-- Posts that merely mention the intent topic in passing while the real subject is something else.
+GATE B — AUTHOR-ROLE MATCH (speech-act)
+   intent SHARING  → title must itself share (first-person recount, retrospective, "here's what I did / what worked / what happened").
+                     ❌ questions, polls, "how do you…?", "what's the best way to…?" — those are ASKING, the inverse shape.
+   intent ASKING   → title must itself ask. Announcements and product launches fail.
+   intent OFFERING → title must offer/announce. Questions and retrospectives fail.
+   intent STRUGGLING → title must describe the author's current problem. Tutorials, solutions, or success stories fail.
 
-================================================================
-WORKED EXAMPLE — so you calibrate correctly
+GATE C — STANCE MATCH
+   Positive outcomes don't match negative-outcome intents and vice-versa. "What worked" ≠ "what didn't work". "People who love X" ≠ "people who hate X".
+
+GATE D — EVIDENCE IN TITLE
+   You must be able to underline concrete words in the TITLE itself that prove the match. You are NOT allowed to assume context, guess what the body contains, or give benefit of the doubt.
+
+═════════════════════════════════════════════════════════════════
+HARD EXCLUSIONS — never include regardless of topic
+• Affiliate, referral, "join our network / get our $$$" promo posts.
+• Cofounder / hiring / "looking for teammate" posts (unless the intent is literally that).
+• Generic advice columns, listicles, or frameworks that aren't a first-person account.
+• Feedback requests ("thoughts?", "is this useful?", "roast my idea").
+• Pure rants, memes, jokes, philosophical musings, shower thoughts.
+• Posts where the intent keyword appears only in passing while the real subject is something else.
+• Titles so vague you'd have to read the body to decide (that means the title alone doesn't prove it — EXCLUDE).
+
+═════════════════════════════════════════════════════════════════
+CALIBRATION — study these before deciding
 Intent: "dev talking about what worked for them to get users"
-- ✅ "Solo dev, 6 months in, here's what actually worked for finding users" — sharing shape, aligned direction.
-- ✅ "0$ marketing, 8.9% conv rate, 3100 users after 2 months" — retrospective of what worked.
-- ❌ "What's the cheapest way you got users for your SaaS?" — REVERSED SHAPE (asking, not telling).
-- ❌ "The hardest thing about microsaas isn't building it, it's finding traction" — commentary, not a first-person account of what worked.
-- ❌ "Built a tool that gets keywords google search volume" — product launch; wrong topic.
-- ❌ "Validating micro-SaaS: ADHD reminder app - thoughts?" — feedback request, not a win retrospective.
+  (SUBJECT=user acquisition tactic; ROLE=SHARING; STANCE=positive/what worked)
+  ✅ "Solo dev, 6 months in, here's what actually worked for finding users"
+  ✅ "0$ marketing, 8.9% conv rate, 3100 users after 2 months"
+  ❌ "What's the cheapest way you got users for your SaaS?"        — ROLE reversed (asking).
+  ❌ "The hardest thing about microsaas isn't building, it's traction" — ROLE: commentary, not sharing.
+  ❌ "Why so many SaaS founders are throwing away their traffic"      — ROLE: opinion rant.
+  ❌ "Built a tool that gets keywords google search volume"           — SUBJECT mismatch (product launch).
+  ❌ "Validating micro-SaaS: ADHD reminder app — thoughts?"           — Feedback request.
+  ❌ "Launch your SaaS into our affiliate network of 250k+ creators"  — Promo/affiliate.
+  ❌ "I got traffic. Zero signups. That was my wake up call"          — STANCE mismatch (what DIDN'T work).
+  ❌ "18YO Founder Looking for Technical Cofounder"                   — Cofounder ask.
 
-================================================================
-INPUT (one per line, TAB-separated "<postId>\\t<title>"):
+═════════════════════════════════════════════════════════════════
+INPUT — one per line, TAB-separated "<postId>\\t<title>":
 ${titleLines}
 
-================================================================
-OUTPUT
-Return ONLY a JSON array of matching postIds as strings. No prose, no keys, no markdown, no explanation. Return [] if nothing matches.`;
+═════════════════════════════════════════════════════════════════
+OUTPUT — return ONLY a JSON array of matching postIds as strings, e.g. ["abc123","def456"]. No prose, no keys, no markdown fences, no trailing text. Return [] if nothing passes all four gates. When unsure, return []. Precision over recall, always.`;
 
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -189,6 +209,7 @@ Return ONLY a JSON array of matching postIds as strings. No prose, no keys, no m
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        temperature: 0,
         messages: [{ role: "user", content: prompt }],
       }),
     });
