@@ -17,6 +17,7 @@ interface Post {
   ups: number;
   numComments: number;
   createdUtc: number;
+  matchedKeywords?: string[];
 }
 
 interface Props {
@@ -612,6 +613,50 @@ export default function RedditFeed({ posts, loading }: Props) {
   // at the next globalFetch).
   const aiCandidatePosts                = useQuery(api.aiFilter.getAiCandidatePosts, {});
 
+  // ── Leads (normal-mode manual save) ──────────────────────────────────────
+  const leadLists       = useQuery(api.leads.getLists);
+  const createLeadList  = useMutation(api.leads.createList);
+  const addLeadMutation = useMutation(api.leads.addLead);
+  const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
+  const [toastKey, setToastKey]         = useState(0);
+  // Refs so DOM event handlers always see the latest values
+  const leadListsRef = useRef(leadLists);
+  leadListsRef.current = leadLists;
+  const savedPostIdsRef = useRef(savedPostIds);
+  savedPostIdsRef.current = savedPostIds;
+
+  const handleAddLead = useCallback(async (p: Post) => {
+    if (savedPostIdsRef.current.has(p.postId)) return;
+    // Resolve the target list: first existing list, otherwise auto-create "Inbox".
+    let targetListId = leadListsRef.current?.[0]?._id ?? null;
+    if (!targetListId) {
+      targetListId = await createLeadList({ name: "Inbox" });
+    }
+    if (!targetListId) return;
+    await addLeadMutation({
+      listId:      targetListId,
+      postId:      p.postId,
+      source:      "normal",
+      title:       p.title ?? p.body.slice(0, 200),
+      url:         p.url,
+      subreddit:   p.subreddit,
+      author:      p.author,
+      ups:         p.ups,
+      numComments: p.numComments,
+      createdUtc:  p.createdUtc,
+      query:       (p.matchedKeywords ?? []).join(", "),
+    });
+    setSavedPostIds((prev) => {
+      const next = new Set(prev);
+      next.add(p.postId);
+      return next;
+    });
+    setToastKey((k) => k + 1);
+  }, [createLeadList, addLeadMutation]);
+
+  const handleAddLeadRef = useRef(handleAddLead);
+  handleAddLeadRef.current = handleAddLead;
+
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const innerRef = useRef<HTMLDivElement>(null);
@@ -787,7 +832,14 @@ export default function RedditFeed({ posts, loading }: Props) {
 
         const title = p.title || p.body.slice(0, 120);
         const subColor = getSubredditColor(p.subreddit);
-        card.innerHTML = `
+        // Save-to-Leads bookmark icon — normal mode only. Pre-saved state
+        // reflects if this postId is already in our session's savedPostIds set.
+        const alreadySaved = feedMode === "normal" && savedPostIdsRef.current.has(p.postId);
+        const saveBtnHTML = feedMode === "normal" ? `
+        <div class="kf-save" role="button" aria-label="Add to leads" title="Add to leads" style="position:absolute;top:9px;left:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:pointer;z-index:2;color:${alreadySaved ? "#DF849D" : "#B2A28C"};transition:color .15s ease, background .15s ease">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="${alreadySaved ? "#DF849D" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+        </div>` : "";
+        card.innerHTML = `${saveBtnHTML}
         <div class="kf" style="position:absolute;top:9px;right:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:default;z-index:2">
           <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 7 7 10 7 14a5 5 0 0010 0c0-2.5-1.5-5-2.5-6 0 2-1 3.5-2.5 3.5S9.5 10 12 2z" fill="#FF6B35"/></svg>
         </div>
@@ -864,6 +916,40 @@ export default function RedditFeed({ posts, loading }: Props) {
           });
         }
 
+        // Save-to-Leads click handler (normal mode only). The card itself is
+        // an <a> so we must stop propagation to prevent the reddit link
+        // from opening on click.
+        const saveEl = card.querySelector<HTMLElement>(".kf-save");
+        if (saveEl) {
+          saveEl.addEventListener("mouseenter", () => {
+            if (saveEl.dataset.saved !== "true") {
+              saveEl.style.background = "rgba(0,0,0,0.06)";
+              saveEl.style.color = "#62584F";
+            }
+          });
+          saveEl.addEventListener("mouseleave", () => {
+            saveEl.style.background = "";
+            if (saveEl.dataset.saved !== "true") saveEl.style.color = "#B2A28C";
+          });
+          saveEl.addEventListener("click", async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (saveEl.dataset.saved === "true") return;
+            saveEl.dataset.saved = "true";
+            // Flip to filled + accent immediately so the click feels responsive.
+            saveEl.style.color = "#DF849D";
+            saveEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="#DF849D" stroke="#DF849D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+            try {
+              await handleAddLeadRef.current(p);
+            } catch {
+              // Revert on failure.
+              saveEl.dataset.saved = "false";
+              saveEl.style.color = "#B2A28C";
+              saveEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+            }
+          });
+        }
+
         inner.appendChild(card);
       });
 
@@ -921,10 +1007,57 @@ export default function RedditFeed({ posts, loading }: Props) {
         overflow: "hidden",
       }}
     >
-      {/* Spin keyframes injected inline */}
+      {/* Spin + lead-toast keyframes */}
       <style>{`
         @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes kf-toast-pop {
+          0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.96); }
+          12%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          78%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(0.98); }
+        }
       `}</style>
+
+      {/* "Lead added" toast — centered over the feed, fade in/out. Keyed on
+          toastKey so every save remounts the node and restarts the animation. */}
+      {toastKey > 0 && (
+        <div
+          key={toastKey}
+          style={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            zIndex: 40,
+            pointerEvents: "none",
+            animation: "kf-toast-pop 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+            background: "rgba(255,255,255,0.92)",
+            backdropFilter: "blur(10px)",
+            WebkitBackdropFilter: "blur(10px)",
+            border: "1px solid rgba(0,0,0,0.06)",
+            borderRadius: 999,
+            padding: "9px 16px 9px 12px",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            color: "#191918",
+            letterSpacing: "-0.005em",
+            boxShadow: "0 6px 28px rgba(0,0,0,0.06)",
+          }}
+        >
+          <span style={{
+            width: 18, height: 18, borderRadius: 999, background: "#DF849D",
+            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+          }}>
+            <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+          </span>
+          Lead added
+        </div>
+      )}
 
       {/* Canvas */}
       <div
