@@ -79,10 +79,10 @@ export const setAiSettings = mutation({
       .query("aiModeSettings")
       .withIndex("by_user", (q) => q.eq("userId", userId))
       .first();
-    // Clear matched posts on every settings change — old matches may not align with new intents.
-    // New matches are produced only by the next globalFetch cycle. No manual trigger.
+    // Preserve existing matches on settings change — they stay visible until
+    // the next globalFetch cycle produces the new batch. No manual trigger.
     if (existing) {
-      await ctx.db.patch(existing._id, { intents, subreddits, matchedPostIds: [] });
+      await ctx.db.patch(existing._id, { intents, subreddits });
     } else {
       await ctx.db.insert("aiModeSettings", { userId, intents, subreddits, matchedPostIds: [] });
     }
