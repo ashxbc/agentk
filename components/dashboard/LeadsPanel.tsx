@@ -363,8 +363,6 @@ function ConfirmModal({
           position: "absolute",
           inset: 0,
           background: "rgba(25, 25, 24, 0.32)",
-          backdropFilter: "blur(6px)",
-          WebkitBackdropFilter: "blur(6px)",
           zIndex: 50,
           animation: "kf-modal-backdrop-in .18s ease-out",
         }}
