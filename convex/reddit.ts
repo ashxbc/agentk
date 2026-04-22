@@ -446,51 +446,45 @@ export const globalFetch = internalAction({
             });
             const duplicates = aiCandidates.length - insertedCandidates.length;
 
-            // Classify per intent so each match is tagged with the intent
-            // that produced it. Removing an intent from the toolbar then
-            // cleanly hides posts that were matched only by that intent.
-            const entries: { postId: string; intent: string }[] = [];
-            const uniqueMatchedIds = new Set<string>();
-            let anyError = false;
-            const perIntentCounts: string[] = [];
+            // ONE classifier call for all intents — the model tags each
+            // matching post with the intent number(s) it satisfied. We map
+            // those back to normalized intent keys to produce (postId, intent)
+            // pairs for storage.
+            const { postIds: uniqueMatchedIds, pairs, error } = await matchPostsToIntents(
+              aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
+              cleanIntents,
+              apiKey,
+              `AI ${tag}`,
+            );
 
-            for (const rawIntent of cleanIntents) {
-              const intentKey = normalizeIntent(rawIntent);
-              if (!intentKey) continue;
-              const { postIds: matched, error } = await matchPostsToIntents(
-                aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
-                [rawIntent],
-                apiKey,
-                `AI ${tag} intent="${intentKey.slice(0, 40)}"`,
-              );
-              if (error) {
-                anyError = true;
-                perIntentCounts.push(`"${intentKey.slice(0, 24)}"=ERR`);
-                continue;
-              }
-              for (const pid of matched) {
-                entries.push({ postId: pid, intent: intentKey });
-                uniqueMatchedIds.add(pid);
-              }
-              perIntentCounts.push(`"${intentKey.slice(0, 24)}"=${matched.length}`);
+            // Per-intent breakdown for logging.
+            const perIntentCounts = new Map<string, number>();
+            for (const p of pairs) {
+              perIntentCounts.set(p.intent, (perIntentCounts.get(p.intent) ?? 0) + 1);
             }
+            const perIntentStr = cleanIntents
+              .map((i) => {
+                const k = normalizeIntent(i);
+                return `"${k.slice(0, 28)}"=${perIntentCounts.get(k) ?? 0}`;
+              })
+              .join(", ");
 
             const insertedSet = new Set(insertedCandidates);
-            const newMatches = [...uniqueMatchedIds].filter((id) => insertedSet.has(id));
+            const newMatches = uniqueMatchedIds.filter((id) => insertedSet.has(id));
 
-            if (anyError && uniqueMatchedIds.size === 0) {
+            if (error) {
               console.warn(
                 `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | classifier=ERROR`,
               );
             } else {
               console.log(
-                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | per-intent=[${perIntentCounts.join(", ")}] | unique-matched=${uniqueMatchedIds.size} | new-matched=${newMatches.length}`,
+                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | per-intent=[${perIntentStr}] | unique-matched=${uniqueMatchedIds.length} | new-matched=${newMatches.length} | pairs-written=${pairs.length}`,
               );
             }
 
-            if (entries.length > 0) {
+            if (pairs.length > 0) {
               await ctx.runMutation(internal.aiFilter.appendMatchedPosts, {
-                userId, entries,
+                userId, entries: pairs,
               });
             }
             for (const id of newMatches) newPostIdsForAlerts.add(id);
