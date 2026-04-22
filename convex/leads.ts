@@ -66,6 +66,22 @@ export const deleteList = mutation({
   },
 });
 
+// Returns every postId the current user has saved across all of their lead
+// lists. The RedditFeed uses this to drive the bookmark-filled state on
+// each post card reactively.
+export const getSavedPostIds = query({
+  args: {},
+  handler: async (ctx) => {
+    const userId = await getAuthUserId(ctx);
+    if (!userId) return [];
+    const rows = await ctx.db
+      .query("leads")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    return Array.from(new Set(rows.map((r) => r.postId)));
+  },
+});
+
 // ── Leads ─────────────────────────────────────────────────────────────────────
 
 export const getLeads = query({

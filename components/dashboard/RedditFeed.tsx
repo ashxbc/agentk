@@ -615,13 +615,22 @@ export default function RedditFeed({ posts, loading }: Props) {
 
   // ── Leads (normal-mode manual save) ──────────────────────────────────────
   const leadLists       = useQuery(api.leads.getLists);
+  const savedIdsData    = useQuery(api.leads.getSavedPostIds);
   const createLeadList  = useMutation(api.leads.createList);
   const addLeadMutation = useMutation(api.leads.addLead);
-  const [savedPostIds, setSavedPostIds] = useState<Set<string>>(new Set());
-  const [toastKey, setToastKey]         = useState(0);
+  const [toastKey, setToastKey] = useState(0);
+
+  // Derived Set from the server query. Undefined until the query resolves;
+  // an empty Set while unresolved is fine — cards render unsaved, then flip
+  // once the query lands (canvas re-renders via the effect dep below).
+  const savedPostIds = useMemo(
+    () => new Set<string>(savedIdsData ?? []),
+    [savedIdsData],
+  );
+
   // Refs so DOM event handlers always see the latest values
-  const leadListsRef = useRef(leadLists);
-  leadListsRef.current = leadLists;
+  const leadListsRef    = useRef(leadLists);
+  leadListsRef.current  = leadLists;
   const savedPostIdsRef = useRef(savedPostIds);
   savedPostIdsRef.current = savedPostIds;
 
@@ -646,11 +655,8 @@ export default function RedditFeed({ posts, loading }: Props) {
       createdUtc:  p.createdUtc,
       query:       (p.matchedKeywords ?? []).join(", "),
     });
-    setSavedPostIds((prev) => {
-      const next = new Set(prev);
-      next.add(p.postId);
-      return next;
-    });
+    // No local state: the savedPostIds query re-runs reactively after the
+    // mutation and the canvas redraw effect below picks it up.
     setToastKey((k) => k + 1);
   }, [createLeadList, addLeadMutation]);
 
@@ -989,7 +995,10 @@ export default function RedditFeed({ posts, loading }: Props) {
     inner.innerHTML = "";
     inner.style.height = "0";
     if (displayPosts.length > 0) appendBatch(renderGen.current);
-  }, [feedMode, displayPosts, appendBatch]);
+    // savedPostIds is read via ref inside appendBatch; including it here
+    // guarantees a canvas redraw when leads are added/removed so each
+    // card's bookmark icon reflects the true server state.
+  }, [feedMode, displayPosts, appendBatch, savedPostIds]);
 
   const hasKeywords    = keywords.length > 0;
   const hasSubreddits  = subreddits.length > 0;

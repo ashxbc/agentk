@@ -48,6 +48,7 @@ export default function LeadsPanel() {
   const [newName, setNewName]       = useState("");
   const [renamingId, setRenamingId] = useState<Id<"leadLists"> | null>(null);
   const [renameVal, setRenameVal]   = useState("");
+  const [toastKey, setToastKey]     = useState(0); // increments to show "Lead removed" toast
 
   // If open list was deleted elsewhere, drop back to overview.
   const openList = useMemo(
@@ -68,26 +69,35 @@ export default function LeadsPanel() {
     if (id) setOpenListId(id);
   }
 
+  // Shared toast renderer so both views use the same element.
+  const toastNode = <RemovedToast toastKey={toastKey} onDone={() => setToastKey(0)} />;
+
   // ── List-detail view ──────────────────────────────────────────────────────
   if (openList) {
     return (
-      <LeadListView
-        listId={openList._id}
-        listName={openList.name}
-        onBack={() => setOpenListId(null)}
-        onRename={(name) => renameList({ listId: openList._id, name })}
-        onDelete={async () => {
-          await deleteList({ listId: openList._id });
-          setOpenListId(null);
-        }}
-        onRemoveLead={(leadId) => removeLead({ leadId })}
-      />
+      <div style={{ flex: 1, position: "relative", display: "flex", overflow: "hidden" }}>
+        <LeadListView
+          listId={openList._id}
+          listName={openList.name}
+          onBack={() => setOpenListId(null)}
+          onRename={(name) => renameList({ listId: openList._id, name })}
+          onDelete={async () => {
+            await deleteList({ listId: openList._id });
+            setOpenListId(null);
+          }}
+          onRemoveLead={async (leadId) => {
+            await removeLead({ leadId });
+            setToastKey((k) => k + 1);
+          }}
+        />
+        {toastNode}
+      </div>
     );
   }
 
   // ── Overview ─────────────────────────────────────────────────────────────
   return (
-    <div style={{ flex: 1, background: BG, overflow: "auto" }}>
+    <div style={{ flex: 1, background: BG, overflow: "auto", position: "relative" }}>
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "56px 40px 80px" }}>
         {/* Header */}
         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 40 }}>
@@ -162,12 +172,15 @@ export default function LeadsPanel() {
           </div>
         )}
 
-        {/* Lists */}
+        {/* Lists — the empty-state block is suppressed while the inline
+            "new list" row is open so there's no redundant empty panel
+            underneath it. It comes back if the user cancels or after the
+            last list is deleted. */}
         {lists === undefined ? (
           <EmptyBlock label="Loading…" />
-        ) : lists.length === 0 ? (
+        ) : lists.length === 0 && !creating ? (
           <EmptyBlock label="No lists yet. Create one to start collecting leads." />
-        ) : (
+        ) : lists.length === 0 && creating ? null : (
           <div style={{ background: CARD_BG, border: `1px solid ${BORDER}`, borderRadius: 14, overflow: "hidden" }}>
             {lists.map((l, i) => {
               const isRenaming = renamingId === l._id;
@@ -261,11 +274,54 @@ export default function LeadsPanel() {
           </div>
         )}
       </div>
+      {toastNode}
     </div>
   );
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function _unused() { return SOFT; }
+}
+
+// "Lead removed" toast — same look as the Reddit feed's "Lead added" one.
+function RemovedToast({ toastKey, onDone }: { toastKey: number; onDone: () => void }) {
+  if (toastKey === 0) return null;
+  return (
+    <>
+      <style>{`
+        @keyframes kf-toast-pop {
+          0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.96); }
+          12%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          78%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(0.98); }
+        }
+      `}</style>
+      <div
+        key={toastKey}
+        onAnimationEnd={onDone}
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 40,
+          pointerEvents: "none",
+          animation: "kf-toast-pop 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+          background: "rgba(255,255,255,0.92)",
+          backdropFilter: "blur(10px)",
+          WebkitBackdropFilter: "blur(10px)",
+          border: "1px solid rgba(0,0,0,0.06)",
+          borderRadius: 999,
+          padding: "9px 18px",
+          fontSize: 13,
+          fontWeight: 600,
+          color: TEXT,
+          letterSpacing: "-0.005em",
+        }}
+      >
+        Lead removed
+      </div>
+    </>
+  );
 }
 
 function EmptyBlock({ label }: { label: string }) {
