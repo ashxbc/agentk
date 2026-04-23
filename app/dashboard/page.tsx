@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useConvexAuth } from "convex/react";
-import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import Sidebar, { type ActiveTab } from "@/components/dashboard/Sidebar";
@@ -18,8 +17,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { signOut }          = useAuthActions();
-  const posts                = useQuery(api.reddit.getResults);
+const posts                = useQuery(api.reddit.getResults);
   const currentUser          = useQuery(api.users.currentUser);
   const registerDevice       = useMutation(api.devices.registerDevice);
   const autoVerifyUser       = useMutation(api.emailVerification.autoVerifyUser);
@@ -37,11 +35,7 @@ export default function DashboardPage() {
         .then(({ ip }: { ip: string }) =>
           registerDevice({ ip, userAgent: navigator.userAgent })
         )
-        .catch((err: any) => {
-          if (err?.message?.includes("DEVICE_CONFLICT")) {
-            signOut().then(() => router.replace("/?blocked=1"));
-          }
-        });
+        .catch(() => {});
 
       // Auto-verify Google / existing users; for new email users send the
       // verification email exactly once per page load.
