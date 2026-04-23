@@ -41,13 +41,18 @@ function searchUrl(q: string): string {
     : `https://www.reddit.com/api/subreddit_autocomplete_v2.json?query=${encodeURIComponent(q)}&limit=6&include_over_18=false&include_profiles=false`;
 }
 
+const FETCH_TIMEOUT_MS = 25_000; // 25s per attempt — prevents hung connections
+
 // Fetch helper — retries up to 2 times on network/5xx errors, skips on 429
 async function fetchJSON(subs: string[]): Promise<{ json: any; proxyHost: string } | null> {
   const url     = subredditUrl(subs);
   const headers = proxyHeaders();
   for (let attempt = 0; attempt < 3; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
-      const res       = await fetch(url, { headers });
+      const res       = await fetch(url, { headers, signal: controller.signal });
+      clearTimeout(timer);
       const proxyHost = res.headers.get("X-Proxy-Host") ?? proxyBase() ?? "direct";
       if (res.status === 429) return null;
       if (res.status >= 500 && attempt < 2) continue;
@@ -56,6 +61,7 @@ async function fetchJSON(subs: string[]): Promise<{ json: any; proxyHost: string
       if (!json?.data?.children) return null;
       return { json, proxyHost };
     } catch {
+      clearTimeout(timer);
       if (attempt < 2) continue;
       return null;
     }
@@ -395,7 +401,7 @@ export const globalFetch = internalAction({
       } else {
         console.warn(`[globalFetch] null response for r/${chunk.join("+")}`);
       }
-      await new Promise((r) => setTimeout(r, 1500 + jitter()));
+      await new Promise((r) => setTimeout(r, 500 + jitter()));
     }
 
     // 5. Global post filter: last 6h, not deleted/removed, title >50 chars, score ≥1
