@@ -102,7 +102,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
   function handleSignupUsernameNext() {
     setError("");
     if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-      setError("Username must be 3–20 chars: letters, numbers, underscore.");
+      setError("Username must be 3 to 20 chars: letters, numbers, underscore.");
       return;
     }
     setView("signup-password");
@@ -212,7 +212,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
         {view === "signup-email" && (
           <>
             <h2 className="text-xl font-extrabold tracking-tight text-[#191918] mb-1">Create account</h2>
-            <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 1 of 3 — your email</p>
+            <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 1 of 3: your email</p>
 
             <button onClick={() => handleGoogle("signup")} disabled={googleLoading} className="w-full flex items-center justify-center gap-3 py-2.5 rounded-xl border border-black/10 bg-white text-sm font-semibold text-[#191918] hover:bg-[#fafafa] transition-colors mb-4 disabled:opacity-50 disabled:cursor-not-allowed">
               {GOOGLE_ICON} {googleLoading ? "Redirecting…" : "Continue with Google"}
@@ -240,7 +240,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
           <>
             <BackArrow onClick={() => { setError(""); setView("signup-email"); }} />
             <h2 className="text-xl font-extrabold tracking-tight text-[#191918] mb-1">Pick a username</h2>
-            <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 2 of 3 — 3–20 chars, letters, numbers, underscore</p>
+            <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 2 of 3: 3 to 20 chars, letters, numbers, underscore</p>
             <input type="text" placeholder="username" value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSignupUsernameNext()} className={inputCls} autoFocus />
             {error && <p className="text-xs text-red-500 mt-2 font-medium">{error}</p>}
             <button onClick={handleSignupUsernameNext} className={gradBtn} style={GRAD}>Next →</button>
@@ -252,7 +252,7 @@ export default function AuthModal({ isOpen, onClose }: Props) {
           <>
             <BackArrow onClick={() => { setError(""); setView("signup-username"); }} />
             <h2 className="text-xl font-extrabold tracking-tight text-[#191918] mb-1">Set a password</h2>
-            <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 3 of 3 — minimum 8 characters</p>
+            <p className="text-sm text-[#B2A28C] font-medium mb-6">Step 3 of 3: minimum 8 characters</p>
             <div className="relative">
               <input type={showPw ? "text" : "password"} placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === "Enter" && handleSignupSubmit()} className={inputCls + " pr-11"} autoFocus />
               <button type="button" onClick={() => setShowPw(p => !p)} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#B2A28C] hover:text-[#191918] transition-colors">
