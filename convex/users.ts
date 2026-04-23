@@ -1,7 +1,32 @@
-import { internalQuery, mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+
+// One-shot cleanup: deletes authAccounts entries whose users document no longer
+// exists (orphaned by the old deleteAccount-in-verify-flow race condition).
+// Also removes dangling authSessions for the same orphaned userIds.
+// Run once: npx convex run users:cleanupOrphanedAccounts
+export const cleanupOrphanedAccounts = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const accounts = await ctx.db.query("authAccounts").collect();
+    const orphanedUserIds = new Set<string>();
+    for (const account of accounts) {
+      const user = await ctx.db.get(account.userId);
+      if (!user) {
+        orphanedUserIds.add(account.userId);
+        await ctx.db.delete(account._id);
+      }
+    }
+    for (const session of await ctx.db.query("authSessions").collect()) {
+      if (orphanedUserIds.has(session.userId)) {
+        await ctx.db.delete(session._id);
+      }
+    }
+    return { deletedAccounts: orphanedUserIds.size, orphanedUserIds: [...orphanedUserIds] };
+  },
+});
 
 // Internal: fetch a user by ID (used by Telegram webhook for /account).
 export const getUserById = internalQuery({
