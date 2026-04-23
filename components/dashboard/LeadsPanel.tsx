@@ -127,7 +127,7 @@ export default function LeadsPanel() {
               Leads
             </h1>
             <p style={{ fontSize: 13, color: MUTED, margin: "6px 0 0", fontWeight: 400 }}>
-              Save and organize Reddit posts into lists.
+              Capture high-intent prospects from Reddit and close them.
             </p>
           </div>
           <button
