@@ -862,10 +862,10 @@ export default function SocialProofFlow() {
       <div className="flex flex-col md:flex-row items-center gap-14 md:gap-20" ref={r1}>
         <div className="w-full md:w-[38%] text-left space-y-4">
           <p className="text-2xl md:text-3xl font-bold text-on-surface leading-snug tracking-tight">
-            Dial in your Reddit radar in seconds.
+            Set up your Reddit lead radar in seconds.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            Drop a handful of keywords, exclude the noise, and watch live posts surface straight into your feed. No configuration marathons.
+            Add keywords, filter out the noise, and watch buyer intent posts land straight in your feed. No setup headaches.
           </p>
         </div>
         <div className="w-full md:w-[62%]">
@@ -877,10 +877,10 @@ export default function SocialProofFlow() {
       <div className="flex flex-col md:flex-row-reverse items-center gap-14 md:gap-20" ref={r2}>
         <div className="w-full md:w-[38%] space-y-4">
           <p className="text-2xl md:text-3xl font-bold text-on-surface leading-snug tracking-tight">
-            Describe intent, not keywords.
+            Describe the lead you want, not just keywords.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            Write what you're actually hunting for in plain English. Our AI reads every new post and surfaces only the ones that match the spirit of your ask.
+            Tell AgentK what you are looking for in plain English. The AI reads every new post and only shows you the ones that match your intent.
           </p>
         </div>
         <div className="w-full md:w-[62%]">
@@ -892,10 +892,10 @@ export default function SocialProofFlow() {
       <div className="flex flex-col md:flex-row items-center gap-14 md:gap-20" ref={r3}>
         <div className="w-full md:w-[38%] text-left space-y-4">
           <p className="text-2xl md:text-3xl font-bold text-on-surface leading-snug tracking-tight">
-            One click turns a post into a lead.
+            One click saves a Reddit post as a lead.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            Tap the bookmark and the post lands in a clean spreadsheet of prospects you can sort, filter, and export to CSV in a heartbeat.
+            Hit the bookmark and that post lands in a clean list of prospects you can sort, filter, and export to CSV.
           </p>
         </div>
         <div className="w-full md:w-[62%]">
@@ -907,10 +907,10 @@ export default function SocialProofFlow() {
       <div className="flex flex-col md:flex-row-reverse items-center gap-14 md:gap-20" ref={r4}>
         <div className="w-full md:w-[38%] space-y-4">
           <p className="text-2xl md:text-3xl font-bold text-on-surface leading-snug tracking-tight">
-            Instant alerts on Telegram and Discord.
+            Get alerted the second a lead posts on Reddit.
           </p>
           <p className="text-sm text-secondary leading-relaxed">
-            The moment a matching post goes live, AgentK fires an alert to whichever platform you use. No dashboard checking required.
+            AgentK fires an alert to Telegram or Discord the moment a matching post goes live. No dashboard checking needed.
           </p>
         </div>
         <div className="w-full md:w-[62%]">

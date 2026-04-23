@@ -17,11 +17,11 @@ const FAQS = [
   },
   {
     q: "How do Reddit lead alerts get delivered?",
-    a: "Alerts go to Telegram or Discord — your choice. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert — no need to open the dashboard.",
+    a: "Alerts go to Telegram or Discord. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert, no dashboard needed.",
   },
   {
     q: "How many leads can I track at once?",
-    a: "Up to 50 keywords and 5 subreddits simultaneously, with no limit on alerts received. That means 50 different buying signals across 5 high-intent communities running in parallel, all day, every day — while you focus on actually talking to leads.",
+    a: "Up to 50 keywords and 5 subreddits simultaneously, with no limit on alerts received. That means 50 different buying signals across 5 high-intent communities running in parallel, all day, every day, so you can focus on actually talking to leads.",
   },
   {
     q: "Can I filter out low-quality leads?",
@@ -29,19 +29,19 @@ const FAQS = [
   },
   {
     q: "Can I save Reddit leads to a list?",
-    a: "Yes. Every post in the live feed has a save button. Click it to add the lead to a named list — Prospects, Hot Leads, Follow-Ups. You can also save leads directly from Telegram or Discord bot alerts with one tap, without ever opening the dashboard.",
+    a: "Yes. Every post in the live feed has a save button. Click it to add the lead to a named list like Prospects, Hot Leads, or Follow-Ups. You can also save leads directly from Telegram or Discord bot alerts with one tap, without ever opening the dashboard.",
   },
   {
     q: "Does AgentK have AI-powered lead filtering?",
-    a: "Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English — for example, 'startup founders looking for a dev tool' — and AgentK uses AI to surface only posts that match that intent. It cuts noise dramatically and finds leads that keyword matching alone would miss.",
+    a: "Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English, like 'startup founders looking for a dev tool', and AgentK uses AI to surface only posts that match that intent. It cuts noise dramatically and finds leads that keyword matching alone would miss.",
   },
   {
     q: "Is AgentK really free?",
-    a: "Yes. 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature — 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering — is included for free, forever. If that ever changes, existing users keep the free plan.",
+    a: "Yes. 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature is included free, forever: 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering. If that ever changes, existing users keep the free plan.",
   },
   {
     q: "How do I start finding leads on Reddit today?",
-    a: "Takes 2 minutes. Sign up free with Google or email. Open the dashboard. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately — no setup call, no onboarding form, no waiting.",
+    a: "Takes 2 minutes. Sign up free with Google or email. Open the dashboard. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately. No setup call, no onboarding form, no waiting.",
   },
 ];
 

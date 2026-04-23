@@ -24,12 +24,12 @@ const dancingScript = Dancing_Script({
 const SITE_URL = "https://tryagentk.com";
 const SITE_NAME = "AgentK";
 const SITE_DESCRIPTION =
-  "Find people on Reddit actively asking for what you sell. AgentK scans subreddits 24/7, detects buyer-intent posts, and sends instant Telegram & Discord alerts in under 6 minutes. 100% free — no credit card.";
+  "Find people on Reddit actively asking for what you sell. AgentK scans subreddits 24/7, detects buyer-intent posts, and sends instant Telegram and Discord alerts in under 6 minutes. 100% free, no credit card.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "AgentK | Free Reddit Lead Generation Tool — Find Leads on Reddit",
+    default: "AgentK | Free Reddit Lead Generation Tool. Find Leads on Reddit",
     template: "%s | AgentK",
   },
   description: SITE_DESCRIPTION,
@@ -72,20 +72,20 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "AgentK | Free Reddit Lead Generation Tool — Find Leads on Reddit",
+    title: "AgentK | Free Reddit Lead Generation Tool. Find Leads on Reddit",
     description: SITE_DESCRIPTION,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "AgentK — Find leads on Reddit before anyone else.",
+        alt: "AgentK. Find leads on Reddit before anyone else.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AgentK | Free Reddit Lead Generation Tool — Find Leads on Reddit",
+    title: "AgentK | Free Reddit Lead Generation Tool. Find Leads on Reddit",
     description: SITE_DESCRIPTION,
     images: [`${SITE_URL}/og-image.png`],
     creator: "@agentk",
@@ -134,7 +134,7 @@ const softwareSchema = {
     "@type": "Offer",
     price: "0",
     priceCurrency: "USD",
-    description: "Free forever — no credit card required",
+    description: "Free forever, no credit card required",
   },
   featureList: [
     "Reddit lead generation",

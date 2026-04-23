@@ -45,7 +45,7 @@ const faqSchema = {
       name: "How does AgentK deliver Reddit lead alerts?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Alerts go to Telegram or Discord. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert — no need to open the dashboard.",
+        text: "Alerts go to Telegram or Discord. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert, no dashboard needed.",
       },
     },
     {
@@ -53,7 +53,7 @@ const faqSchema = {
       name: "How many leads can I track simultaneously with AgentK?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Up to 50 keywords and 5 subreddits simultaneously, with no limit on alerts received. That means 50 different buying signals across 5 high-intent communities running in parallel, all day, every day — while you focus on actually talking to leads.",
+        text: "Up to 50 keywords and 5 subreddits simultaneously, with no limit on alerts received. That means 50 different buying signals across 5 high-intent communities running in parallel, all day, every day, so you can focus on actually talking to leads.",
       },
     },
     {
@@ -69,7 +69,7 @@ const faqSchema = {
       name: "Can I save Reddit leads to a list?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Every post in the live feed has a save button. Click it to add the lead to a named list — Prospects, Hot Leads, Follow-Ups. You can also save leads directly from Telegram or Discord bot alerts with one tap, without ever opening the dashboard.",
+        text: "Yes. Every post in the live feed has a save button. Click it to add the lead to a named list like Prospects, Hot Leads, or Follow-Ups. You can also save leads directly from Telegram or Discord bot alerts with one tap, without ever opening the dashboard.",
       },
     },
     {
@@ -77,7 +77,7 @@ const faqSchema = {
       name: "Does AgentK have AI-powered lead filtering?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English — for example, 'startup founders looking for a dev tool' — and AgentK uses AI to surface only posts that match that intent, cutting noise dramatically.",
+        text: "Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English, like 'startup founders looking for a dev tool', and AgentK uses AI to surface only posts that match that intent, cutting noise dramatically.",
       },
     },
     {
@@ -85,7 +85,7 @@ const faqSchema = {
       name: "Is AgentK really free? Are there hidden costs?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK is 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature — 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering — is included free, forever. If that ever changes, existing users keep the free plan.",
+        text: "AgentK is 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature is included free, forever: 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering. If that ever changes, existing users keep the free plan.",
       },
     },
     {
@@ -93,7 +93,7 @@ const faqSchema = {
       name: "How do I start finding leads on Reddit today?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Takes 2 minutes. Sign up free with Google or email. Open the dashboard. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately — no setup call, no onboarding form, no waiting.",
+        text: "Takes 2 minutes. Sign up free with Google or email. Open the dashboard. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately. No setup call, no onboarding form, no waiting.",
       },
     },
   ],
