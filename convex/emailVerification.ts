@@ -161,24 +161,15 @@ export const sendEmailAction = internalAction({
       from: "AgentK <noreply@tryagentk.com>",
       to: email,
       subject: "Verify your AgentK email",
-      html: `
-        <div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:48px 32px;background:#FDF7EF;border-radius:16px;">
-          <div style="text-align:center;margin-bottom:36px;">
-            <img src="https://tryagentk.com/logo.png" alt="AgentK" style="height:36px;width:auto;" />
-          </div>
-          <h1 style="font-size:20px;font-weight:800;color:#191918;margin:0 0 10px;letter-spacing:-0.3px;">Verify your email</h1>
-          <p style="font-size:14px;color:#62584F;line-height:1.7;margin:0 0 28px;">
-            Click the button below to verify your email address. The link expires in 24 hours.
-          </p>
-          <a href="${verifyUrl}"
-            style="display:inline-block;background:linear-gradient(135deg,#ff9472,#f2709c);color:#fff;font-weight:800;font-size:14px;padding:13px 28px;border-radius:12px;text-decoration:none;letter-spacing:-0.2px;">
-            Verify my email
-          </a>
-          <p style="font-size:11px;color:#B2A28C;margin-top:32px;line-height:1.6;">
-            If you did not sign up for AgentK, you can safely ignore this email.
-          </p>
-        </div>
-      `,
+      html: `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;padding:0;background:#FDF7EF;">
+<div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:48px 32px;background:#FDF7EF;">
+  <div style="text-align:center;margin-bottom:32px;"><img src="https://tryagentk.com/logo.png" alt="AgentK" style="height:32px;width:auto;display:inline-block;"></div>
+  <h1 style="font-size:20px;font-weight:800;color:#191918;margin:0 0 10px;letter-spacing:-0.3px;">Verify your email</h1>
+  <p style="font-size:14px;color:#62584F;line-height:1.7;margin:0 0 28px;">Click the button below to verify your email address. The link expires in 24 hours.</p>
+  <a href="${verifyUrl}" style="display:inline-block;background:linear-gradient(135deg,#ff9472,#f2709c);color:#fff;font-weight:800;font-size:14px;padding:13px 28px;border-radius:12px;text-decoration:none;">Verify my email</a>
+  <p style="font-size:11px;color:#B2A28C;margin-top:32px;line-height:1.6;">If you did not sign up for AgentK, you can safely ignore this email.</p>
+</div>
+</body></html>`,
     });
   },
 });
