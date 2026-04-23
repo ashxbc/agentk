@@ -286,9 +286,7 @@ const N_KW_OFFSETS = N_KEYWORDS.map((_, i) => 150 + i * 600);
    5600 → all posts in
    9500 → loop restart */
 function NormalModeScene({ visible }: { visible: boolean }) {
-  const [manual, setManual] = useState<number | null>(null);
-  const autoStage = useLoopedStages(visible && manual === null, N_STAGE_TIMINGS, N_TOTAL_MS);
-  const stage = manual ?? autoStage;
+  const stage = useLoopedStages(visible, N_STAGE_TIMINGS, N_TOTAL_MS);
   const typingActive = stage >= 1 && stage < 3;
   const onFeed = stage >= 3;
 
@@ -352,32 +350,7 @@ function NormalModeScene({ visible }: { visible: boolean }) {
         </div>
       </div>
 
-      {/* Clickable progress pips — toggle between the two views */}
-      <StepPips count={2} active={onFeed ? 1 : 0} onClick={(i) => setManual(i === 0 ? 2 : 4)} />
     </StageFrame>
-  );
-}
-
-function StepPips({
-  count, active, onClick,
-}: { count: number; active: number; onClick?: (i: number) => void }) {
-  return (
-    <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6, zIndex: 5 }}>
-      {Array.from({ length: count }).map((_, i) => (
-        <button
-          key={i}
-          onClick={onClick ? () => onClick(i) : undefined}
-          aria-label={`View ${i + 1}`}
-          style={{
-            width: i === active ? 22 : 8, height: 8, borderRadius: 4,
-            background: i === active ? "#DF849D" : "rgba(0,0,0,0.18)",
-            border: "none", padding: 0,
-            cursor: onClick ? "pointer" : "default",
-            transition: `width 0.4s ${EASE_OUT}, background 0.3s ${EASE_OUT}`,
-          }}
-        />
-      ))}
-    </div>
   );
 }
 
@@ -485,20 +458,12 @@ const AI_TOTAL_MS = 10000;
 const AI_INTENT_OFFSETS = [120, 1250, 2400];
 
 function AiModeScene({ visible }: { visible: boolean }) {
-  const [manual, setManual] = useState<number | null>(null);
-  const autoStage = useLoopedStages(visible && manual === null, AI_STAGE_TIMINGS, AI_TOTAL_MS);
-  const stage = manual ?? autoStage;
+  const stage = useLoopedStages(visible, AI_STAGE_TIMINGS, AI_TOTAL_MS);
   const typingActive = stage === 1;
   const onFeed = stage >= 3;
 
   return (
     <StageFrame visible={visible} height={460}>
-      {/* Mode toggle pill (matches dashboard) */}
-      <div style={{ position: "absolute", top: 14, left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: 4, zIndex: 25 }}>
-        <ModePill label="Normal" active={false} />
-        <ModePill label="AI" active />
-      </div>
-
       <div style={{
         position: "absolute", inset: 0,
         display: "flex",
@@ -549,24 +514,7 @@ function AiModeScene({ visible }: { visible: boolean }) {
         </div>
       </div>
 
-      <StepPips count={2} active={onFeed ? 1 : 0} onClick={(i) => setManual(i === 0 ? 2 : 4)} />
     </StageFrame>
-  );
-}
-
-function ModePill({ label, active }: { label: string; active: boolean }) {
-  return (
-    <div style={{
-      padding: "3px 12px", borderRadius: 20,
-      border: "1px solid",
-      borderColor: active ? "#DF849D" : "rgba(0,0,0,0.1)",
-      background: active ? "#DF849D" : "rgba(255,255,255,0.8)",
-      color: active ? "#fff" : "#B2A28C",
-      fontSize: 11, fontWeight: 600,
-      backdropFilter: "blur(8px)",
-    }}>
-      {label}
-    </div>
   );
 }
 
@@ -635,9 +583,7 @@ const CONV_STAGE_TIMINGS = [150, 1200, 2200, 2700, 3600, 4300, 9500] as const;
 const CONV_TOTAL_MS = 10000;
 
 function ConversionScene({ visible }: { visible: boolean }) {
-  const [manual, setManual] = useState<number | null>(null);
-  const autoStage = useLoopedStages(visible && manual === null, CONV_STAGE_TIMINGS, CONV_TOTAL_MS);
-  const stage = manual ?? autoStage;
+  const stage = useLoopedStages(visible, CONV_STAGE_TIMINGS, CONV_TOTAL_MS);
 
   const postVisible = stage >= 1 && stage < 5;
   const zoomed      = stage >= 2 && stage < 5;
@@ -661,17 +607,7 @@ function ConversionScene({ visible }: { visible: boolean }) {
           transformOrigin: "center right",
           transition: `transform 0.9s ${EASE_OUT}`,
         }}>
-          <PostCard post={CONV_POST} showBookmark bookmarkFilled={clicked} />
-          {/* Click pulse ring */}
-          {stage === 3 && (
-            <div style={{
-              position: "absolute", top: 9, right: 9, width: 22, height: 22,
-              borderRadius: 6,
-              boxShadow: "0 0 0 0 rgba(223,132,157,0.55)",
-              animation: "agentk-click 0.55s ease-out forwards",
-              pointerEvents: "none",
-            }}/>
-          )}
+          <PostCard post={CONV_POST} />
         </div>
       </div>
 
@@ -707,7 +643,7 @@ function ConversionScene({ visible }: { visible: boolean }) {
       {/* Spreadsheet lead list */}
       <div style={{
         position: "absolute", inset: 0,
-        padding: "22px",
+        padding: "16px",
         opacity: onSheet ? 1 : 0,
         transform: onSheet ? "scale(1) translateY(0)" : "scale(0.96) translateY(18px)",
         transition: `opacity 0.7s ${EASE_OUT}, transform 0.9s ${EASE_OUT}`,
@@ -715,12 +651,6 @@ function ConversionScene({ visible }: { visible: boolean }) {
       }}>
         <LeadSheet active={onSheet} />
       </div>
-
-      <StepPips
-        count={3}
-        active={onSheet ? 2 : stage >= 2 ? 1 : 0}
-        onClick={(i) => setManual(i === 0 ? 1 : i === 1 ? 3 : 6)}
-      />
     </StageFrame>
   );
 }
@@ -764,11 +694,11 @@ function LeadSheet({ active }: { active: boolean }) {
       <div style={{ flex: 1, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, color: BODY, tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "38%" }} />
-            <col style={{ width: "16%" }} />
+            <col style={{ width: "34%" }} />
             <col style={{ width: "14%" }} />
+            <col style={{ width: "13%" }} />
             <col style={{ width: "8%" }}  />
-            <col style={{ width: "9%" }}  />
+            <col style={{ width: "11%" }} />
             <col style={{ width: "7%" }}  />
             <col style={{ width: "13%" }} />
           </colgroup>
@@ -778,7 +708,7 @@ function LeadSheet({ active }: { active: boolean }) {
               <Th>Subreddit</Th>
               <Th>Author</Th>
               <Th align="right">Ups</Th>
-              <Th align="right">Comments</Th>
+              <Th align="right">Comm.</Th>
               <Th align="right">Age</Th>
               <Th>Query</Th>
             </tr>
