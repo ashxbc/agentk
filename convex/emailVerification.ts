@@ -60,15 +60,9 @@ export const autoVerifyUser = mutation({
     const user = await ctx.db.get(userId);
     if (!user) return false;
 
-    const account = await ctx.db
-      .query("authAccounts")
-      .withIndex("userIdAndProvider", (q) => q.eq("userId", userId))
-      .first();
-
-    const isGoogle   = account?.provider === "google";
     const isOldUser  = user._creationTime < VERIFICATION_CUTOFF;
 
-    if (isGoogle || isOldUser) {
+    if (isOldUser) {
       if (existing) {
         await ctx.db.patch(existing._id, { verified: true, verifiedAt: Date.now() });
       } else {
