@@ -12,7 +12,7 @@ export default function Hero() {
       </h1>
 
       <p className="text-xl text-secondary max-w-2xl leading-relaxed mb-10">
-        430 million people post on Reddit every day.
+        ~2 million people post on Reddit every day.
         <br />
         Some of them are actively looking for what you sell.
         <br />
