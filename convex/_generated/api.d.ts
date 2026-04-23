@@ -14,6 +14,7 @@ import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as devices from "../devices.js";
 import type * as discord from "../discord.js";
+import type * as emailVerification from "../emailVerification.js";
 import type * as http from "../http.js";
 import type * as leads from "../leads.js";
 import type * as reddit from "../reddit.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   devices: typeof devices;
   discord: typeof discord;
+  emailVerification: typeof emailVerification;
   http: typeof http;
   leads: typeof leads;
   reddit: typeof reddit;
