@@ -137,6 +137,20 @@ export default defineSchema({
     .index("by_list_post", ["listId", "postId"])
     .index("by_user_post", ["userId", "postId"]),
 
+  userVerification: defineTable({
+    userId:      v.id("users"),
+    verified:    v.boolean(),
+    verifiedAt:  v.optional(v.number()),
+  }).index("by_user", ["userId"]),
+
+  emailVerificationTokens: defineTable({
+    userId:    v.id("users"),
+    token:     v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_user",  ["userId"]),
+
   aiModeSettings: defineTable({
     userId:         v.id("users"),
     intents:        v.array(v.string()),

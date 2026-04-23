@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
@@ -10,6 +10,7 @@ import RedditFeed from "@/components/dashboard/RedditFeed";
 import LeadsPanel from "@/components/dashboard/LeadsPanel";
 import SettingsPanel from "@/components/dashboard/SettingsPanel";
 import ProductTour from "@/components/dashboard/ProductTour";
+import VerificationBadge from "@/components/dashboard/VerificationBadge";
 
 
 export default function DashboardPage() {
@@ -17,9 +18,13 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-  const { signOut }      = useAuthActions();
-  const posts            = useQuery(api.reddit.getResults);
-  const registerDevice   = useMutation(api.devices.registerDevice);
+  const { signOut }          = useAuthActions();
+  const posts                = useQuery(api.reddit.getResults);
+  const currentUser          = useQuery(api.users.currentUser);
+  const registerDevice       = useMutation(api.devices.registerDevice);
+  const autoVerifyUser       = useMutation(api.emailVerification.autoVerifyUser);
+  const requestVerification  = useMutation(api.emailVerification.requestVerificationEmail);
+  const emailSentRef         = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -37,6 +42,17 @@ export default function DashboardPage() {
             signOut().then(() => router.replace("/?blocked=1"));
           }
         });
+
+      // Auto-verify Google / existing users; for new email users send the
+      // verification email exactly once per page load.
+      if (!emailSentRef.current) {
+        emailSentRef.current = true;
+        autoVerifyUser().then((wasAutoVerified) => {
+          if (!wasAutoVerified) {
+            requestVerification().catch(() => {});
+          }
+        });
+      }
     }
   }, [authLoading, isAuthenticated, router]);
 
@@ -53,6 +69,7 @@ export default function DashboardPage() {
 
   return (
     <div style={{ display: "flex", width: "100%", height: "100%" }}>
+      <VerificationBadge email={(currentUser as any)?.email} />
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main style={{ flex: 1, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
