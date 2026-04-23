@@ -27,28 +27,12 @@ export default function VerificationBadge({ email }: Props) {
         onClick={() => setOpen(true)}
         style={{
           position: "fixed", top: 14, right: 20, zIndex: 50,
-          display: "flex", alignItems: "center", gap: 7,
-          padding: "6px 13px", borderRadius: 99,
-          background: "#fff",
-          border: "1px solid rgba(223,132,157,0.35)",
-          cursor: "pointer", fontSize: 11, fontWeight: 700,
-          color: "#DF849D", letterSpacing: "0.01em",
-          boxShadow: "0 1px 6px rgba(0,0,0,0.07)",
-          transition: "box-shadow 0.15s",
+          background: "none", border: "none", padding: 0,
+          cursor: "pointer", fontSize: 12, fontWeight: 700,
+          color: "#191918", letterSpacing: "-0.01em",
         }}
       >
-        <span style={{
-          width: 6, height: 6, borderRadius: "50%",
-          background: "#DF849D", flexShrink: 0,
-          animation: "pulse 2s ease-in-out infinite",
-        }} />
-        not verified · verify first
-        <style>{`
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-          }
-        `}</style>
+        Not verified. Verify first.
       </button>
 
       {/* Modal */}
