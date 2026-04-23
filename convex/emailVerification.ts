@@ -164,7 +164,7 @@ export const sendEmailAction = internalAction({
       html: `
         <div style="font-family:Inter,-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:48px 32px;background:#FDF7EF;border-radius:16px;">
           <div style="text-align:center;margin-bottom:36px;">
-            <span style="font-size:22px;font-weight:900;color:#DF849D;letter-spacing:-0.5px;">agentK</span>
+            <img src="https://tryagentk.com/logo.png" alt="AgentK" style="height:36px;width:auto;" />
           </div>
           <h1 style="font-size:20px;font-weight:800;color:#191918;margin:0 0 10px;letter-spacing:-0.3px;">Verify your email</h1>
           <p style="font-size:14px;color:#62584F;line-height:1.7;margin:0 0 28px;">
