@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
@@ -12,14 +12,25 @@ export const registerDevice = mutation({
     const userId = await getAuthUserId(ctx);
     if (!userId) throw new Error("Not authenticated");
 
-    // Check if this IP already has 3 or more different accounts
+    // Check if this IP already has 3 or more different LIVE accounts.
+    // Filter out stale rows whose users document was deleted (orphaned devices).
     const existing_for_ip = await ctx.db
       .query("userDevices")
       .withIndex("by_ip", (q) => q.eq("ip", ip))
       .collect();
 
-    const othersOnIp = existing_for_ip.filter((d) => d.userId !== userId);
-    const conflict = othersOnIp.length >= 3 ? othersOnIp[0] : null;
+    const liveOthersOnIp: typeof existing_for_ip = [];
+    for (const d of existing_for_ip) {
+      if (d.userId === userId) continue;
+      const userExists = await ctx.db.get(d.userId);
+      if (userExists) {
+        liveOthersOnIp.push(d);
+      } else {
+        // Clean up orphaned device row while we're here
+        await ctx.db.delete(d._id);
+      }
+    }
+    const conflict = liveOthersOnIp.length >= 3 ? liveOthersOnIp[0] : null;
 
     if (conflict) {
       // Notify Telegram/Discord if the new account had a bot session
@@ -63,6 +74,21 @@ export const registerDevice = mutation({
     }
 
     return { ok: true };
+  },
+});
+
+// One-shot: remove userDevices rows whose users document no longer exists.
+// Run: npx convex run devices:cleanupOrphanedDevices
+export const cleanupOrphanedDevices = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const rows = await ctx.db.query("userDevices").collect();
+    let deleted = 0;
+    for (const row of rows) {
+      const user = await ctx.db.get(row.userId);
+      if (!user) { await ctx.db.delete(row._id); deleted++; }
+    }
+    return { deleted };
   },
 });
 
