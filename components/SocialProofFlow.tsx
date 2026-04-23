@@ -45,10 +45,10 @@ function useInView<T extends Element>(threshold = 0.3): [React.RefObject<T | nul
   return [ref, inView];
 }
 
-/* Hook: drives a looping stage machine once `active` is true.
-   Returns the current zero-indexed stage. Stages advance on their timers,
-   then loop back to 0 after totalMs. */
-function useLoopedStages(active: boolean, stageTimings: number[], totalMs: number): number {
+/* Hook: drives a looping stage machine once `active` is true and no manual
+   stage override is set. Stages advance on their timers, then loop back to 0
+   after totalMs. `stageTimings` and `totalMs` must be stable references. */
+function useLoopedStages(active: boolean, stageTimings: readonly number[], totalMs: number): number {
   const [stage, setStage] = useState(0);
   useEffect(() => {
     if (!active) return;
@@ -114,7 +114,6 @@ function MockModal({
     <div style={{
       width, background: "#fff", borderRadius: 12,
       border: "1px solid rgba(0,0,0,0.08)", padding: "13px 14px 11px",
-      boxShadow: "0 12px 40px rgba(0,0,0,0.08)",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
         <span style={{ fontSize: 9, fontWeight: 800, letterSpacing: ".16em", textTransform: "uppercase", color: "#B2A28C" }}>
@@ -142,7 +141,6 @@ function StageFrame({
       borderRadius: 16,
       border: "1px solid rgba(0,0,0,0.08)",
       overflow: "hidden",
-      boxShadow: "0 20px 60px -20px rgba(0,0,0,0.12)",
       opacity: visible ? 1 : 0,
       transform: visible ? "scale(1)" : "scale(0.96)",
       transition: `opacity 0.9s ${EASE_OUT}, transform 1.1s ${EASE_OUT}`,
@@ -179,7 +177,6 @@ function PostCard({
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
-      boxShadow: "0 8px 24px -12px rgba(0,0,0,0.12)",
       ...style,
     }}>
       {/* Fire icon top-right */}
@@ -275,6 +272,11 @@ const N_POST_POS: [string, number, number, number][] = [
   ["17%", 240, 2, 2],
 ];
 
+/* Stable module-scope timings so useLoopedStages doesn't re-run each render. */
+const N_STAGE_TIMINGS = [150, 3200, 4200, 4600, 9500] as const;
+const N_TOTAL_MS = 10000;
+const N_KW_OFFSETS = N_KEYWORDS.map((_, i) => 150 + i * 600);
+
 /* Stage timeline for Scene 1 (ms from activation):
    0    → zoom-in starts
    500  → begin typing keywords
@@ -284,16 +286,10 @@ const N_POST_POS: [string, number, number, number][] = [
    5600 → all posts in
    9500 → loop restart */
 function NormalModeScene({ visible }: { visible: boolean }) {
-  // Stage 0: idle/initial. Stage 1: keywords typing. Stage 2: exclusion typing.
-  // Stage 3: slide to feed. Stage 4: feed visible + posts. Stage 5: loop reset.
-  const stage = useLoopedStages(
-    visible,
-    [150, 3200, 4200, 4600, 9500],
-    10000,
-  );
-
+  const [manual, setManual] = useState<number | null>(null);
+  const autoStage = useLoopedStages(visible && manual === null, N_STAGE_TIMINGS, N_TOTAL_MS);
+  const stage = manual ?? autoStage;
   const typingActive = stage >= 1 && stage < 3;
-  const kwOffsets = N_KEYWORDS.map((_, i) => 150 + i * 600);
   const onFeed = stage >= 3;
 
   return (
@@ -316,7 +312,7 @@ function NormalModeScene({ visible }: { visible: boolean }) {
               <KeywordLiveInput
                 active={typingActive && stage === 1}
                 keywords={N_KEYWORDS}
-                offsets={kwOffsets}
+                offsets={N_KW_OFFSETS}
                 allPills={stage >= 2}
               />
               <span style={{ fontSize: 9, color: "#B2A28C", marginTop: 4, display: "block" }}>
@@ -356,21 +352,30 @@ function NormalModeScene({ visible }: { visible: boolean }) {
         </div>
       </div>
 
-      {/* Caption pips bottom-right — subtle progress dots */}
-      <StepPips count={2} active={onFeed ? 1 : 0} />
+      {/* Clickable progress pips — toggle between the two views */}
+      <StepPips count={2} active={onFeed ? 1 : 0} onClick={(i) => setManual(i === 0 ? 2 : 4)} />
     </StageFrame>
   );
 }
 
-function StepPips({ count, active }: { count: number; active: number }) {
+function StepPips({
+  count, active, onClick,
+}: { count: number; active: number; onClick?: (i: number) => void }) {
   return (
     <div style={{ position: "absolute", bottom: 14, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 6, zIndex: 5 }}>
       {Array.from({ length: count }).map((_, i) => (
-        <span key={i} style={{
-          width: i === active ? 22 : 6, height: 6, borderRadius: 3,
-          background: i === active ? "#DF849D" : "rgba(0,0,0,0.15)",
-          transition: `all 0.4s ${EASE_OUT}`,
-        }} />
+        <button
+          key={i}
+          onClick={onClick ? () => onClick(i) : undefined}
+          aria-label={`View ${i + 1}`}
+          style={{
+            width: i === active ? 22 : 8, height: 8, borderRadius: 4,
+            background: i === active ? "#DF849D" : "rgba(0,0,0,0.18)",
+            border: "none", padding: 0,
+            cursor: onClick ? "pointer" : "default",
+            transition: `width 0.4s ${EASE_OUT}, background 0.3s ${EASE_OUT}`,
+          }}
+        />
       ))}
     </div>
   );
@@ -475,16 +480,15 @@ const AI_POST_POS: [string, number, number, number][] = [
   ["22%", 234, -1,  2],
 ];
 
-function AiModeScene({ visible }: { visible: boolean }) {
-  // stages: 0 idle, 1 intent typing, 2 hold, 3 slide, 4 posts in, 5 loop
-  const stage = useLoopedStages(
-    visible,
-    [150, 3600, 4000, 4500, 9500],
-    10000,
-  );
+const AI_STAGE_TIMINGS = [150, 3600, 4000, 4500, 9500] as const;
+const AI_TOTAL_MS = 10000;
+const AI_INTENT_OFFSETS = [120, 1250, 2400];
 
+function AiModeScene({ visible }: { visible: boolean }) {
+  const [manual, setManual] = useState<number | null>(null);
+  const autoStage = useLoopedStages(visible && manual === null, AI_STAGE_TIMINGS, AI_TOTAL_MS);
+  const stage = manual ?? autoStage;
   const typingActive = stage === 1;
-  const intentOffsets = [120, 1250, 2400];
   const onFeed = stage >= 3;
 
   return (
@@ -515,7 +519,7 @@ function AiModeScene({ visible }: { visible: boolean }) {
                   idx={i + 1}
                   text={intent}
                   active={typingActive}
-                  startDelay={intentOffsets[i]}
+                  startDelay={AI_INTENT_OFFSETS[i]}
                   forceDone={stage >= 2}
                 />
               ))}
@@ -545,7 +549,7 @@ function AiModeScene({ visible }: { visible: boolean }) {
         </div>
       </div>
 
-      <StepPips count={2} active={onFeed ? 1 : 0} />
+      <StepPips count={2} active={onFeed ? 1 : 0} onClick={(i) => setManual(i === 0 ? 2 : 4)} />
     </StageFrame>
   );
 }
@@ -627,13 +631,13 @@ const SPREADSHEET_ROWS: Array<{
   { title: "Cold outreach is killing me — 400 emails, 2 replies. What am I missing?", subreddit: "startups",      author: "mark_b2b",    ups: 234,  comments: 89,  age: "45m", query: "startup"  },
 ];
 
+const CONV_STAGE_TIMINGS = [150, 1200, 2200, 2700, 3600, 4300, 9500] as const;
+const CONV_TOTAL_MS = 10000;
+
 function ConversionScene({ visible }: { visible: boolean }) {
-  // 0 idle, 1 post centered, 2 zoom to bookmark, 3 click (fill), 4 toast, 5 transition to sheet, 6 rows pop in, 7 loop
-  const stage = useLoopedStages(
-    visible,
-    [150, 1200, 2200, 2700, 3600, 4300, 9500],
-    10000,
-  );
+  const [manual, setManual] = useState<number | null>(null);
+  const autoStage = useLoopedStages(visible && manual === null, CONV_STAGE_TIMINGS, CONV_TOTAL_MS);
+  const stage = manual ?? autoStage;
 
   const postVisible = stage >= 1 && stage < 5;
   const zoomed      = stage >= 2 && stage < 5;
@@ -683,7 +687,6 @@ function ConversionScene({ visible }: { visible: boolean }) {
         borderRadius: 12,
         padding: "10px 14px",
         display: "flex", alignItems: "center", gap: 10,
-        boxShadow: "0 10px 36px -12px rgba(0,0,0,0.18)",
         zIndex: 20,
       }}>
         <div style={{
@@ -713,7 +716,11 @@ function ConversionScene({ visible }: { visible: boolean }) {
         <LeadSheet active={onSheet} />
       </div>
 
-      <StepPips count={3} active={onSheet ? 2 : stage >= 2 ? 1 : 0} />
+      <StepPips
+        count={3}
+        active={onSheet ? 2 : stage >= 2 ? 1 : 0}
+        onClick={(i) => setManual(i === 0 ? 1 : i === 1 ? 3 : 6)}
+      />
     </StageFrame>
   );
 }
@@ -1007,7 +1014,6 @@ export default function SocialProofFlow() {
             borderRadius: 16, border: "1px solid rgba(0,0,0,0.08)",
             overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center",
             padding: "0 24px",
-            boxShadow: "0 20px 60px -20px rgba(0,0,0,0.12)",
           }}>
             <NotificationStack visible={v4} />
           </div>
