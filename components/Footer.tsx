@@ -25,7 +25,7 @@ export default function Footer() {
 
         {/* Description */}
         <p className="text-sm leading-relaxed max-w-xs" style={{ color: "#B2A28C" }}>
-          Real-time Reddit keyword monitoring. Get instant Telegram and Discord alerts the moment matching posts go live.
+          Find leads on Reddit before anyone else. Instant Telegram and Discord alerts for buyer-intent posts. Free forever.
         </p>
 
         {/* Links */}

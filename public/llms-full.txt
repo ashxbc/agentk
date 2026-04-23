@@ -1,29 +1,29 @@
 # AgentK Full Product Documentation for AI Systems
 
-> AgentK is a real-time Reddit keyword monitoring and alerting tool. It scans subreddits every 5 minutes and delivers instant Telegram and Discord push notifications when posts matching user-defined keywords appear.
+> AgentK is a free Reddit lead generation tool. It scans subreddits every 5 minutes and sends instant Telegram and Discord alerts when buyer-intent posts matching your keywords go live — so you can reach leads before anyone else does.
 
 ---
 
 ## Product Overview
 
 **Product name:** AgentK
-**Category:** Reddit monitoring / social listening / keyword alert tool
+**Category:** Reddit lead generation / sales prospecting / buyer-intent monitoring
 **Pricing:** Free (no paid tiers, no credit card required)
 **Website:** https://tryagentk.com
 **Status:** Live and in active use
 
-AgentK solves a specific problem: Reddit moves fast, and valuable posts buying-intent threads, brand mentions, competitor discussions, niche conversations disappear into feeds within hours. Manual checking is impractical. AgentK automates continuous surveillance of any public subreddit and delivers real-time alerts so users can be first to respond.
+AgentK solves a specific problem: Reddit has over 430 million users. Millions of them post every day about problems they need solved, tools they are looking for, and services they want to hire. These buyer-intent posts — "looking for a CRM", "need an SEO agency", "recommend a project management tool" — are live lead opportunities. But they disappear into feeds within hours, and manual checking is impractical. AgentK automates continuous scanning of any public subreddit and delivers real-time alerts the moment a matching post appears, so users can respond first.
 
 ---
 
 ## Core Functionality
 
-### Reddit Monitoring
+### Reddit Lead Detection
 
 - Polls the Reddit API every 5 minutes, 24 hours a day, 7 days a week
 - Monitors any public subreddit (e.g., r/entrepreneur, r/SaaS, r/startups, r/smallbusiness)
 - Matches keywords case-insensitively against post titles and post bodies
-- Detects new posts only no duplicate alerts for the same post
+- Detects new posts only — no duplicate alerts for the same post
 - Supports up to 5 subreddits and 50 keywords per account simultaneously
 
 ### Alert Delivery
@@ -35,45 +35,63 @@ AgentK solves a specific problem: Reddit moves fast, and valuable posts buying-i
   - Upvote count
   - Comment count
   - Direct link to the Reddit post
-- **Discord**: Connect via Discord OAuth bot. Alerts delivered to a specified channel in the same format.
+  - "Save to List" button to add lead to a named list without opening the dashboard
+- **Discord**: Connect via Discord OAuth bot. Alerts delivered to a specified channel in the same format, with a "Save to List" button.
 - Alert latency: typically 1–6 minutes from post publication to notification delivery
 
 ### Filtering Options
 
-Users can configure filters to reduce noise:
+Users can configure filters to reduce noise and surface only high-quality leads:
 - **Minimum upvotes**: Only alert on posts with at least N upvotes
 - **Minimum comments**: Only alert on posts with at least N comments
-- **Minimum author karma**: Ignore low-karma / new accounts (reduces spam detection)
+- **Minimum author karma**: Ignore low-karma / new accounts (reduces spam and bot posts)
 - **Alert cap**: Maximum alerts per hour (/cap N command). Use /cap 0 to remove the cap.
+
+### Save to Lead Lists
+
+- Any post in the live Reddit feed can be bookmarked to a named lead list with one click
+- Lead lists are user-defined (e.g., "Prospects", "Hot Leads", "Follow-Ups", "Contacted")
+- Leads can also be saved directly from Telegram or Discord bot alerts with one tap
+- Each saved lead stores: post title, URL, subreddit, author, upvotes, comments, post age, and the keyword that triggered it
+
+### AI-Powered Filtering (AI Mode)
+
+- The live Reddit feed has two modes: Normal (keyword matching) and AI
+- In AI mode, users describe their target lead in plain English (up to 3 intent statements, 60 characters each)
+- AgentK uses Google Gemini 2.5 Flash Lite (via OpenRouter) to evaluate post titles against the stated intent
+- Only posts that semantically match the intent are shown — dramatically reducing noise
+- AI mode fetches posts under 6 hours old and scores them against the user's intent in real time
+- AI mode is isolated from the normal alert/monitoring pipeline
 
 ---
 
 ## User Onboarding (Step-by-Step)
 
 1. Visit https://tryagentk.com
-2. Click "Start Monitoring Free"
+2. Click "Find My First Lead Free"
 3. Sign up with Google or create an account with email + password
-4. Dashboard opens immediately no email verification required
-5. Enter keywords in the Keywords panel (one per line or comma-separated)
+4. Dashboard opens immediately — no email verification required
+5. Enter keywords in the Keywords panel (phrases like "looking for X", "recommend a tool", competitor names)
 6. Select subreddits in the Subreddits panel (type to search with live autocomplete)
 7. Connect Telegram: open @AgentKBot on Telegram, send /start, copy the provided token into the Settings panel using the /token command
 8. Alternatively, connect Discord via the Discord bot invite link
-9. AgentK begins monitoring immediately after setup no delay, no approval process
+9. AgentK begins scanning immediately — no delay, no approval process
 
 ---
 
 ## Dashboard Features
 
-- **Live Reddit feed**: Shows recent matching posts in real time with upvotes, comments, karma, and post age
+- **Live Reddit feed**: Shows recent matching posts in real time. Switch between Normal mode (keyword matching) and AI mode (intent filtering)
 - **Keywords panel**: Add, remove, and manage up to 50 keywords
 - **Subreddits panel**: Add up to 5 subreddits with live autocomplete suggestions
 - **Metrics panel**: Minimum upvotes, minimum comments, minimum author karma filters
+- **Lead lists**: Create named lists, add posts from the feed or from bot alerts, manage saved leads
 - **Settings panel**: Chat-based command interface for account management
-  - /email view account email and auth provider
-  - /account view or rename username
-  - /token view your alert token and connection instructions
-  - /cap N set hourly alert limit (e.g., /cap 5); /cap 0 removes limit
-  - /delete permanently delete account and all data
+  - /email — view account email and auth provider
+  - /account — view or rename username
+  - /token — view your alert token and connection instructions
+  - /cap N — set hourly alert limit (e.g., /cap 5); /cap 0 removes limit
+  - /delete — permanently delete account and all data
 
 ---
 
@@ -82,7 +100,7 @@ Users can configure filters to reduce noise:
 - All data stored on Convex infrastructure (SOC 2 compliant)
 - Passwords hashed; no plaintext storage
 - TLS encryption for all data in transit
-- AgentK never accesses Reddit user accounts only public API
+- AgentK never accesses Reddit user accounts — only public API
 - AgentK never posts, votes, or comments on Reddit on behalf of users
 - No data sold or shared with third parties
 - Account deletion removes all personal data within 30 days
@@ -93,23 +111,35 @@ Users can configure filters to reduce noise:
 
 ## Frequently Asked Questions
 
-**Q: How fast are alerts?**
-A: Typically 1–6 minutes. AgentK polls every 5 minutes; alert delivery via Telegram/Discord adds seconds.
+**Q: What is AgentK and how does it find leads on Reddit?**
+A: AgentK is a free Reddit lead generation tool. It scans subreddits every 5 minutes, 24/7, looking for posts that match your keywords. The moment someone posts "looking for a CRM" or "need help with SEO" in your target subreddits, AgentK sends you an instant alert via Telegram or Discord. You reach that lead before any competitor even sees the post.
 
-**Q: Does it monitor private subreddits?**
-A: No. AgentK only accesses publicly available Reddit data via the official Reddit API.
+**Q: How fast does AgentK detect new leads?**
+A: AgentK polls Reddit every 5 minutes around the clock. Most alerts land in under 6 minutes from the moment a post goes live. On Reddit, the first relevant reply wins attention. A 6-minute edge over competitors who check Reddit manually is the difference between closing a lead and watching someone else do it.
 
-**Q: Can I track brand mentions across all of Reddit?**
-A: You can monitor up to 5 subreddits simultaneously. For broad brand monitoring, choose the subreddits most likely to contain relevant discussions.
+**Q: What kind of leads can I find on Reddit?**
+A: Reddit has over 430 million users across 100,000+ active communities. Subreddits like r/entrepreneur, r/SaaS, r/startups, and r/smallbusiness are full of people asking for tool recommendations, hiring freelancers, describing pain points, and looking for services. Track phrases like "looking for," "recommend a tool," "need help with," or competitor brand names to surface buyer-intent posts the moment they appear.
 
-**Q: Is it free forever?**
-A: Yes. There are no paid plans. If this changes, existing users will be grandfathered into the free tier.
+**Q: How does AgentK deliver Reddit lead alerts?**
+A: Alerts go to Telegram or Discord. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert.
 
-**Q: Does it work with Reddit API changes?**
-A: AgentK uses the official Reddit API and updates as Reddit's API evolves.
+**Q: How many leads can I track simultaneously?**
+A: Up to 50 keywords and 5 subreddits at once, with no limit on alerts received. That means 50 buying signals across 5 high-intent communities running in parallel, all day every day.
 
-**Q: Can multiple people share one account?**
-A: Accounts are individual. Each user has their own keyword set and alert preferences.
+**Q: Can I filter out low-quality leads?**
+A: Yes. Set minimum upvote thresholds, minimum comment counts, and minimum author karma to filter out spam, bots, and throwaway accounts. You can also cap max alerts per hour.
+
+**Q: Can I save Reddit leads to a list?**
+A: Yes. Every post in the live feed has a save button. Click it to add the lead to a named list. You can also save leads from Telegram or Discord bot alerts with one tap, without opening the dashboard.
+
+**Q: Does AgentK have AI-powered lead filtering?**
+A: Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English and AgentK uses AI to surface only posts that match that intent.
+
+**Q: Is AgentK really free?**
+A: Yes. 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature — 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering — is included free, forever.
+
+**Q: How do I start finding leads on Reddit today?**
+A: Takes 2 minutes. Sign up free with Google or email. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately.
 
 ---
 
@@ -117,9 +147,12 @@ A: Accounts are individual. Each user has their own keyword set and alert prefer
 
 | Feature | AgentK | Reddit native notifications | RSS feeds |
 |---|---|---|---|
-| Monitors keywords in any post | ✅ | ❌ | Partial |
-| Telegram push alerts | ✅ | ❌ | ❌ |
-| Discord alerts | ✅ | ❌ | ❌ |
+| Detects buyer-intent posts by keyword | ✅ | ❌ | Partial |
+| Telegram push alerts for leads | ✅ | ❌ | ❌ |
+| Discord lead alerts | ✅ | ❌ | ❌ |
+| Save leads to named lists | ✅ | ❌ | ❌ |
+| AI intent-based lead filtering | ✅ | ❌ | ❌ |
+| Save leads from bot alerts | ✅ | ❌ | ❌ |
 | Upvote/karma filters | ✅ | ❌ | ❌ |
 | Polling frequency | 5 min | Variable | 15–60 min |
 | Free with no limits | ✅ | ✅ | ✅ |

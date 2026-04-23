@@ -24,30 +24,33 @@ const dancingScript = Dancing_Script({
 const SITE_URL = "https://tryagentk.com";
 const SITE_NAME = "AgentK";
 const SITE_DESCRIPTION =
-  "AgentK monitors Reddit 24/7 for your keywords and fires instant Telegram and Discord alerts the moment a matching post goes live. Free Reddit keyword monitoring tool — no credit card required.";
+  "Find people on Reddit actively asking for what you sell. AgentK scans subreddits 24/7, detects buyer-intent posts, and sends instant Telegram & Discord alerts in under 6 minutes. 100% free — no credit card.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "AgentK | Real-Time Reddit Keyword Monitoring & Alerts",
+    default: "AgentK | Free Reddit Lead Generation Tool — Find Leads on Reddit",
     template: "%s | AgentK",
   },
   description: SITE_DESCRIPTION,
   keywords: [
-    "Reddit monitoring",
-    "Reddit keyword alerts",
-    "Reddit notifications",
-    "Reddit tracking tool",
-    "Reddit mention tracker",
-    "Reddit keyword monitoring",
+    "reddit lead generation",
+    "find leads on reddit",
+    "reddit lead gen tool",
+    "reddit prospecting",
+    "reddit buyer intent",
+    "reddit sales tool",
+    "free reddit leads",
+    "reddit lead finder",
+    "reddit b2b leads",
+    "reddit marketing tool",
+    "reddit monitoring for leads",
+    "reddit intent monitoring",
     "Telegram Reddit alerts",
     "Discord Reddit alerts",
-    "real-time Reddit alerts",
-    "subreddit monitoring",
-    "Reddit brand monitoring",
-    "Reddit lead generation",
-    "monitor Reddit posts",
-    "Reddit marketing tool",
+    "reddit keyword alerts",
+    "subreddit lead generation",
+    "reddit sales prospecting",
     "AgentK",
   ],
   authors: [{ name: "AgentK", url: SITE_URL }],
@@ -69,20 +72,20 @@ export const metadata: Metadata = {
     locale: "en_US",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "AgentK | Real-Time Reddit Keyword Monitoring & Alerts",
+    title: "AgentK | Free Reddit Lead Generation Tool — Find Leads on Reddit",
     description: SITE_DESCRIPTION,
     images: [
       {
         url: `${SITE_URL}/og-image.png`,
         width: 1200,
         height: 630,
-        alt: "AgentK — Monitor Reddit. Get alerted instantly.",
+        alt: "AgentK — Find leads on Reddit before anyone else.",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "AgentK | Real-Time Reddit Keyword Monitoring & Alerts",
+    title: "AgentK | Free Reddit Lead Generation Tool — Find Leads on Reddit",
     description: SITE_DESCRIPTION,
     images: [`${SITE_URL}/og-image.png`],
     creator: "@agentk",
@@ -109,7 +112,7 @@ const organizationSchema = {
   name: "AgentK",
   url: SITE_URL,
   logo: `${SITE_URL}/logo.png`,
-  description: SITE_DESCRIPTION,
+  description: "AgentK is a free Reddit lead generation tool that finds buyer-intent posts and delivers instant alerts via Telegram and Discord.",
   foundingDate: "2024",
   contactPoint: {
     "@type": "ContactPoint",
@@ -124,7 +127,7 @@ const softwareSchema = {
   name: "AgentK",
   url: SITE_URL,
   description:
-    "Real-time Reddit keyword monitoring tool that delivers instant Telegram and Discord alerts when matching posts appear in any subreddit.",
+    "Free Reddit lead generation tool. AgentK scans 430M+ Reddit users' posts every 5 minutes, detects buyer-intent signals matching your keywords, and delivers instant Telegram and Discord alerts so you can reach leads before anyone else.",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: {
@@ -134,13 +137,17 @@ const softwareSchema = {
     description: "Free forever — no credit card required",
   },
   featureList: [
-    "Real-time Reddit monitoring",
-    "Instant Telegram alerts",
-    "Discord notifications",
+    "Reddit lead generation",
+    "Buyer-intent post detection",
+    "Instant Telegram lead alerts",
+    "Discord lead notifications",
     "50 keywords per account",
     "5 subreddits per account",
     "Upvote and karma filters",
     "Alert cap control",
+    "Save leads to lists",
+    "AI-powered intent filtering",
+    "Save leads from bot alerts",
   ],
   aggregateRating: {
     "@type": "AggregateRating",

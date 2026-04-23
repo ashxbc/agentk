@@ -4,44 +4,44 @@ import { useState } from "react";
 
 const FAQS = [
   {
-    q: "What is AgentK and how does Reddit monitoring work?",
-    a: "AgentK is a real-time Reddit monitoring tool that scans any subreddit every 5 minutes for posts matching your keywords. The moment a match is detected, you receive an instant alert via Telegram or Discord. No manual checking, no delays. Simply set your keywords, choose your subreddits, and AgentK runs 24/7 in the background.",
+    q: "What is AgentK and how does it find leads on Reddit?",
+    a: "AgentK is a free Reddit lead generation tool. It scans subreddits every 5 minutes, 24/7, looking for posts that match your keywords. The moment someone posts 'looking for a CRM' or 'need help with SEO' in your target subreddits, AgentK sends you an instant alert via Telegram or Discord. You reach that lead before any competitor even sees the post.",
   },
   {
-    q: "How fast are the Reddit keyword alerts?",
-    a: "AgentK polls Reddit every 5 minutes around the clock. When a new post matches your tracked keywords, the alert fires within seconds of detection, typically under 6 minutes from the moment the post goes live. This makes it one of the fastest Reddit monitoring solutions available, far quicker than manual RSS feeds or third-party digest services.",
+    q: "How fast does AgentK detect new leads?",
+    a: "AgentK polls Reddit every 5 minutes around the clock. Most alerts land in under 6 minutes from the moment a post goes live. On Reddit, the first relevant reply wins attention. A 6-minute edge over competitors who check Reddit manually is the difference between closing a lead and watching someone else do it.",
   },
   {
-    q: "Which notification channels does AgentK support?",
-    a: "AgentK delivers alerts via Telegram and Discord. Connect your Telegram account or Discord server from the dashboard in one step, no code required. Each alert includes the post title, subreddit, author, upvote count, comment count, and a direct link to the post so you can act instantly.",
+    q: "What kind of leads can I find on Reddit?",
+    a: "Reddit has over 430 million users across 100,000+ active communities. Subreddits like r/entrepreneur, r/SaaS, r/startups, and r/smallbusiness are full of people asking for tool recommendations, hiring freelancers, describing pain points, and looking for services. Track phrases like 'looking for,' 'recommend a tool,' 'need help with,' or competitor brand names to surface buyer-intent posts the moment they appear.",
   },
   {
-    q: "How many keywords and subreddits can I track?",
-    a: "You can track up to 50 keywords and 5 subreddits simultaneously on the free plan. There is no limit on the number of alerts you receive. Keywords are matched case-insensitively against post titles and bodies, so broad terms like 'SaaS tool' and precise phrases like 'looking for Reddit monitoring' both work effectively.",
+    q: "How do Reddit lead alerts get delivered?",
+    a: "Alerts go to Telegram or Discord — your choice. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert — no need to open the dashboard.",
   },
   {
-    q: "Can I filter alerts by upvotes, comments, or author karma?",
-    a: "Yes. AgentK includes granular filters so you only get alerted on posts that matter. You can set minimum upvote thresholds, minimum comment counts, and minimum author karma. You can also cap the maximum number of alerts per hour using the /cap command in the settings panel, preventing notification fatigue during high-volume periods.",
+    q: "How many leads can I track at once?",
+    a: "Up to 50 keywords and 5 subreddits simultaneously, with no limit on alerts received. That means 50 different buying signals across 5 high-intent communities running in parallel, all day, every day — while you focus on actually talking to leads.",
   },
   {
-    q: "Is AgentK free? Are there hidden costs?",
-    a: "AgentK is completely free to use with no credit card required. There are no hidden fees, rate limits, or trial periods. The free plan includes 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, and all filtering features. If paid tiers are introduced in the future, existing users will be grandfathered into the free plan.",
+    q: "Can I filter out low-quality leads?",
+    a: "Yes. Set minimum upvote thresholds, minimum comment counts, and minimum author karma to filter out spam, bots, and throwaway accounts. You can also cap max alerts per hour to prevent noise. The result: only real, high-signal posts reach you.",
   },
   {
-    q: "What are the best use cases for Reddit keyword monitoring?",
-    a: "AgentK is used by founders tracking competitor mentions, sales teams catching 'looking for a tool like X' posts, marketers monitoring brand sentiment, recruiters finding job-seeking posts, investors tracking industry discussions, and community managers staying on top of their brand name. Any use case that benefits from knowing the moment a topic surfaces on Reddit is a perfect fit.",
+    q: "Can I save Reddit leads to a list?",
+    a: "Yes. Every post in the live feed has a save button. Click it to add the lead to a named list — Prospects, Hot Leads, Follow-Ups. You can also save leads directly from Telegram or Discord bot alerts with one tap, without ever opening the dashboard.",
   },
   {
-    q: "How is AgentK different from Reddit's own notification system?",
-    a: "Reddit's native notifications only alert you to activity on posts you've already interacted with. AgentK proactively scans any subreddit for any keyword, including posts from complete strangers, giving you first-mover advantage to comment, DM, or engage before anyone else. It also aggregates multiple subreddits and keywords into a single, unified alert stream.",
+    q: "Does AgentK have AI-powered lead filtering?",
+    a: "Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English — for example, 'startup founders looking for a dev tool' — and AgentK uses AI to surface only posts that match that intent. It cuts noise dramatically and finds leads that keyword matching alone would miss.",
   },
   {
-    q: "Is my data private and secure?",
-    a: "Yes. Your keywords, subreddit list, and account data are stored securely on Convex infrastructure with encrypted transmission (TLS) and hashed authentication. AgentK never posts on your behalf, never accesses your Reddit account, and never shares or sells your data to third parties. See our Privacy Policy for full details.",
+    q: "Is AgentK really free?",
+    a: "Yes. 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature — 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering — is included for free, forever. If that ever changes, existing users keep the free plan.",
   },
   {
-    q: "How do I get started with Reddit monitoring?",
-    a: "Getting started takes under 2 minutes. Create a free account using Google or email, open the dashboard, enter your keywords, select your subreddits, and connect your Telegram bot or Discord server. AgentK begins monitoring immediately. No setup calls, no onboarding forms, no waiting period.",
+    q: "How do I start finding leads on Reddit today?",
+    a: "Takes 2 minutes. Sign up free with Google or email. Open the dashboard. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately — no setup call, no onboarding form, no waiting.",
   },
 ];
 
@@ -91,7 +91,7 @@ export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section className="w-full relative py-40 overflow-hidden" id="faq" aria-label="Frequently asked questions about AgentK Reddit monitoring" style={{ backgroundColor: "#FDF7EF" }}>
+    <section className="w-full relative py-40 overflow-hidden" id="faq" aria-label="Frequently asked questions about AgentK Reddit lead generation" style={{ backgroundColor: "#FDF7EF" }}>
       <div className="max-w-6xl mx-auto px-6 relative z-10">
         <div className="flex flex-col md:flex-row gap-20 md:gap-32">
 
@@ -100,7 +100,7 @@ export default function FAQ() {
               Questions worth <span className="text-[#DF849D] italic">asking.</span>
             </h2>
             <p className="text-lg font-medium leading-relaxed" style={{ color: "#3D3A36" }}>
-              Everything you need to know about Reddit monitoring, keyword alerts, and how AgentK works.
+              Everything you need to know about finding leads on Reddit with AgentK.
             </p>
           </div>
 

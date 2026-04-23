@@ -18,82 +18,82 @@ const faqSchema = {
   mainEntity: [
     {
       "@type": "Question",
-      name: "What is AgentK and how does Reddit monitoring work?",
+      name: "What is AgentK and how does it find leads on Reddit?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK is a real-time Reddit monitoring tool that scans any subreddit every 5 minutes for posts matching your keywords. The moment a match is detected, you receive an instant alert via Telegram or Discord. No manual checking, no delays. Simply set your keywords, choose your subreddits, and AgentK runs 24/7 in the background.",
+        text: "AgentK is a free Reddit lead generation tool. It scans subreddits every 5 minutes, 24/7, looking for posts that match your keywords. The moment someone posts 'looking for a CRM' or 'need help with SEO' in your target subreddits, AgentK sends you an instant alert via Telegram or Discord. You reach that lead before any competitor even sees the post.",
       },
     },
     {
       "@type": "Question",
-      name: "How fast are the Reddit keyword alerts?",
+      name: "How fast does AgentK detect new leads on Reddit?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK polls Reddit every 5 minutes around the clock. When a new post matches your tracked keywords, the alert fires within seconds of detection, typically under 6 minutes from the moment the post goes live.",
+        text: "AgentK polls Reddit every 5 minutes around the clock. Most alerts land in under 6 minutes from the moment a post goes live. On Reddit, the first relevant reply wins attention. A 6-minute edge over competitors who check Reddit manually is the difference between closing a lead and watching someone else do it.",
       },
     },
     {
       "@type": "Question",
-      name: "Which notification channels does AgentK support?",
+      name: "What kind of leads can I find on Reddit?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK delivers alerts via Telegram and Discord. Connect your Telegram account or Discord server from the dashboard in one step, no code required. Each alert includes the post title, subreddit, author, upvote count, comment count, and a direct link to the post.",
+        text: "Reddit has over 430 million users across 100,000+ active communities. Subreddits like r/entrepreneur, r/SaaS, r/startups, and r/smallbusiness are full of people asking for tool recommendations, hiring freelancers, describing pain points, and looking for services. Track phrases like 'looking for,' 'recommend a tool,' 'need help with,' or competitor brand names to surface buyer-intent posts the moment they appear.",
       },
     },
     {
       "@type": "Question",
-      name: "How many keywords and subreddits can I track?",
+      name: "How does AgentK deliver Reddit lead alerts?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "You can track up to 50 keywords and 5 subreddits simultaneously on the free plan. There is no limit on the number of alerts you receive.",
+        text: "Alerts go to Telegram or Discord. Each alert includes the post title, subreddit, author username, upvote count, comment count, and a direct link. Tap the link, read the post, and reply. You can also save any lead to a named list directly from the bot alert — no need to open the dashboard.",
       },
     },
     {
       "@type": "Question",
-      name: "Can I filter alerts by upvotes, comments, or author karma?",
+      name: "How many leads can I track simultaneously with AgentK?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. AgentK includes granular filters so you only get alerted on posts that matter. You can set minimum upvote thresholds, minimum comment counts, and minimum author karma. You can also cap the maximum number of alerts per hour.",
+        text: "Up to 50 keywords and 5 subreddits simultaneously, with no limit on alerts received. That means 50 different buying signals across 5 high-intent communities running in parallel, all day, every day — while you focus on actually talking to leads.",
       },
     },
     {
       "@type": "Question",
-      name: "Is AgentK free? Are there hidden costs?",
+      name: "Can I filter out low-quality Reddit leads?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK is completely free to use with no credit card required. There are no hidden fees, rate limits, or trial periods. The free plan includes 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, and all filtering features.",
+        text: "Yes. Set minimum upvote thresholds, minimum comment counts, and minimum author karma to filter out spam, bots, and throwaway accounts. You can also cap max alerts per hour to prevent noise. The result: only real, high-signal posts reach you.",
       },
     },
     {
       "@type": "Question",
-      name: "What are the best use cases for Reddit keyword monitoring?",
+      name: "Can I save Reddit leads to a list?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "AgentK is used by founders tracking competitor mentions, sales teams catching 'looking for a tool like X' posts, marketers monitoring brand sentiment, recruiters finding job-seeking posts, investors tracking industry discussions, and community managers staying on top of their brand name.",
+        text: "Yes. Every post in the live feed has a save button. Click it to add the lead to a named list — Prospects, Hot Leads, Follow-Ups. You can also save leads directly from Telegram or Discord bot alerts with one tap, without ever opening the dashboard.",
       },
     },
     {
       "@type": "Question",
-      name: "How is AgentK different from Reddit's own notification system?",
+      name: "Does AgentK have AI-powered lead filtering?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Reddit's native notifications only alert you to activity on posts you've already interacted with. AgentK proactively scans any subreddit for any keyword, including posts from complete strangers, giving you first-mover advantage to comment, DM, or engage before anyone else.",
+        text: "Yes. Switch to AI mode in the live feed to filter posts by intent instead of exact keywords. Describe what you're looking for in plain English — for example, 'startup founders looking for a dev tool' — and AgentK uses AI to surface only posts that match that intent, cutting noise dramatically.",
       },
     },
     {
       "@type": "Question",
-      name: "Is my data private and secure?",
+      name: "Is AgentK really free? Are there hidden costs?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Yes. Your keywords, subreddit list, and account data are stored securely with encrypted transmission (TLS) and hashed authentication. AgentK never posts on your behalf, never accesses your Reddit account, and never shares or sells your data to third parties.",
+        text: "AgentK is 100% free. No credit card, no trial, no usage limits, no paid upgrade. Every feature — 50 keywords, 5 subreddits, unlimited alerts, Telegram and Discord notifications, save-to-list, and AI filtering — is included free, forever. If that ever changes, existing users keep the free plan.",
       },
     },
     {
       "@type": "Question",
-      name: "How do I get started with Reddit monitoring?",
+      name: "How do I start finding leads on Reddit today?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Getting started takes under 2 minutes. Create a free account using Google or email, open the dashboard, enter your keywords, select your subreddits, and connect your Telegram bot or Discord server. AgentK begins monitoring immediately. No setup calls, no onboarding forms, no waiting period.",
+        text: "Takes 2 minutes. Sign up free with Google or email. Open the dashboard. Enter keywords your future customers would use. Pick the subreddits they hang out in. Connect Telegram or Discord. AgentK starts scanning immediately — no setup call, no onboarding form, no waiting.",
       },
     },
   ],

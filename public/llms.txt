@@ -1,39 +1,41 @@
 # AgentK
 
-> Real-time Reddit keyword monitoring and alert tool. AgentK scans any subreddit every 5 minutes and fires instant Telegram and Discord alerts the moment a post matching your keywords goes live.
+> AgentK is a free Reddit lead generation tool. It scans subreddits every 5 minutes and sends instant Telegram and Discord alerts the moment a buyer-intent post matching your keywords goes live — so you reach that lead before anyone else.
 
 ## What AgentK Does
 
-AgentK is a Reddit monitoring service that tracks keywords across subreddits 24/7. When a matching post is detected, users receive an immediate push notification via Telegram or Discord typically within 6 minutes of the post being published.
+AgentK finds leads on Reddit automatically. It monitors any public subreddit 24/7, matches posts against your keywords, and delivers real-time alerts via Telegram or Discord — typically within 6 minutes of a post going live. Over 430 million people use Reddit. Many of them are actively asking for products and services like yours. AgentK surfaces those posts the instant they appear.
 
 ## Key Features
 
-- **Real-time Reddit monitoring**: Scans subreddits every 5 minutes, continuously
+- **Reddit lead generation**: Scans subreddits every 5 minutes, detects buyer-intent posts, alerts you immediately
 - **Instant alerts**: Telegram and Discord notifications with post title, author, upvotes, comments, and direct link
-- **50 keywords** per account, **5 subreddits** per account
+- **50 keywords** per account, **5 subreddits** per account, **unlimited alerts**
 - **Filters**: Minimum upvotes, minimum comments, minimum author karma, hourly alert cap
-- **Completely free**: No credit card, no usage limits, no trial period
+- **Save leads to lists**: Bookmark any post to a named lead list (Prospects, Hot Leads, etc.) from the feed or directly from bot alerts
+- **AI-powered filtering**: Switch to AI mode to filter posts by intent in plain English — finds leads keyword matching alone would miss
+- **Completely free**: No credit card, no trial period, no usage limits, ever
 
 ## Use Cases
 
-- Founders monitoring competitor brand mentions on Reddit
-- Sales teams catching "looking for a tool like X" buying-intent posts
-- Marketers tracking brand sentiment and product discussions
-- Recruiters finding job-seeking posts in professional subreddits
-- Investors tracking industry trends and startup discussions
-- Community managers staying on top of their product name
+- Founders finding people who are actively looking for a tool like theirs
+- Sales teams catching "looking for a CRM / SEO tool / dev agency" buyer-intent posts
+- Marketers tracking competitor brand mentions and switching signals
+- Recruiters finding hiring posts in professional and startup subreddits
+- Agencies prospecting for clients describing problems they solve
+- SaaS founders monitoring niche communities for feature requests and pain points
 
 ## How It Works
 
 1. Create a free account (Google OAuth or email/password)
-2. Enter keywords to track (e.g., "Reddit monitoring", "Telegram alerts", competitor names)
+2. Enter keywords to track (e.g., "looking for CRM", "need SEO help", competitor names)
 3. Select subreddits to watch (e.g., r/entrepreneur, r/SaaS, r/startups)
 4. Connect Telegram bot or Discord server
-5. AgentK monitors 24/7 and delivers alerts instantly
+5. AgentK monitors 24/7 and delivers lead alerts instantly
 
 ## Pricing
 
-Free forever. No paid plans. No credit card required.
+Free forever. No paid plans. No credit card required. All features included.
 
 ## Company
 
@@ -48,4 +50,5 @@ Free forever. No paid plans. No credit card required.
 - Backend: Convex (real-time database and serverless functions)
 - Auth: Convex Auth with Google OAuth and email/password
 - Notifications: Telegram Bot API, Discord Bot API
+- AI filtering: Google Gemini 2.5 Flash Lite via OpenRouter
 - Data source: Reddit public API
