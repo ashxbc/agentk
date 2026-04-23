@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useConvexAuth, useQuery, useMutation } from "convex/react";
+import { useConvexAuth, useQuery } from "convex/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
@@ -11,7 +11,6 @@ export default function AuthVerifyPage() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const { signOut } = useAuthActions();
   const [nowTs] = useState(() => Date.now());
-  const deleteAccount = useMutation(api.users.deleteAccount);
 
   const isNewGoogleUser = useQuery(
     api.users.isNewGoogleUser,
@@ -29,15 +28,13 @@ export default function AuthVerifyPage() {
     if (isNewGoogleUser === undefined) return;
 
     if (isNewGoogleUser) {
-      deleteAccount()
-        .catch(() => {})
-        .finally(() => {
-          sessionStorage.setItem(
-            "authError",
-            "No account found for this Google account. Please sign up first.",
-          );
-          signOut().then(() => { window.location.href = "/?openLogin=true"; });
-        });
+      // Sign out only — no deleteAccount to avoid race with Convex Auth's
+      // store mutation still processing the OAuth callback.
+      sessionStorage.setItem(
+        "authError",
+        "No account found for this Google account. Please sign up first.",
+      );
+      signOut().then(() => { window.location.href = "/?openLogin=true"; });
     } else {
       router.replace("/dashboard");
     }
