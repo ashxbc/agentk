@@ -14,9 +14,9 @@ export default function Hero() {
       <p className="text-xl text-secondary max-w-2xl leading-relaxed mb-10">
         430 million people post on Reddit every day.
         <br />
-        Some of them are looking for exactly what you sell.
+        Some of them are actively looking for what you sell.
         <br />
-        AgentK finds those posts and pings you on Telegram or Discord in under 6 minutes. Free, forever.
+        AgentK finds those posts and alerts you in minutes. Free, forever.
       </p>
 
       <div className="flex flex-col items-center gap-8 mb-16">
