@@ -1,4 +1,4 @@
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
@@ -128,6 +128,44 @@ export const addLead = mutation({
       ...args,
       addedAt: Date.now(),
     });
+  },
+});
+
+export const getListsForUser = internalQuery({
+  args: { userId: v.id("users") },
+  handler: async (ctx, { userId }) => {
+    const lists = await ctx.db
+      .query("leadLists")
+      .withIndex("by_user", (q) => q.eq("userId", userId))
+      .collect();
+    return lists.sort((a, b) => a.createdAt - b.createdAt);
+  },
+});
+
+export const addLeadInternal = internalMutation({
+  args: {
+    userId:      v.id("users"),
+    listId:      v.id("leadLists"),
+    postId:      v.string(),
+    source:      v.string(),
+    title:       v.string(),
+    url:         v.string(),
+    subreddit:   v.string(),
+    author:      v.string(),
+    ups:         v.number(),
+    numComments: v.number(),
+    createdUtc:  v.number(),
+    query:       v.string(),
+  },
+  handler: async (ctx, { userId, ...rest }) => {
+    const list = await ctx.db.get(rest.listId);
+    if (!list || list.userId !== userId) return;
+    const existing = await ctx.db
+      .query("leads")
+      .withIndex("by_list_post", (q) => q.eq("listId", rest.listId).eq("postId", rest.postId))
+      .first();
+    if (existing) return;
+    await ctx.db.insert("leads", { userId, ...rest, addedAt: Date.now() });
   },
 });
 

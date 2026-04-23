@@ -43,17 +43,19 @@ async function tgSend(
   token: string,
   chatId: string,
   text: string,
-  url?: string
+  url?: string,
+  extraButtons?: { text: string; callback_data: string }[]
 ): Promise<boolean> {
   const body: Record<string, unknown> = {
     chat_id: chatId,
     text,
     parse_mode: "MarkdownV2",
   };
-  if (url) {
-    body.reply_markup = {
-      inline_keyboard: [[{ text: "🔗 Go to post", url }]],
-    };
+  const row1 = url ? [{ text: "🔗 Go to post", url }] : [];
+  const row2 = extraButtons ?? [];
+  if (row1.length > 0 || row2.length > 0) {
+    const rows = [...(row1.length ? [row1] : []), ...(row2.length ? [row2] : [])];
+    body.reply_markup = { inline_keyboard: rows };
   }
   const res = await fetch(
     `https://api.telegram.org/bot${token}/sendMessage`,
@@ -68,6 +70,14 @@ async function tgSend(
     return false;
   }
   return true;
+}
+
+async function tgAnswerCallback(token: string, callbackQueryId: string, text?: string) {
+  await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ callback_query_id: callbackQueryId, text }),
+  });
 }
 
 // ── Escape helper for MarkdownV2 ──────────────────────────────────────────────
@@ -116,6 +126,78 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
   try {
     body = await request.json();
   } catch {
+    return new Response("ok", { status: 200 });
+  }
+
+  // ── callback_query (inline button press) ────────────────────────────────────
+  const cbq = body?.callback_query;
+  if (cbq) {
+    const cbChatId = String(cbq.message?.chat?.id ?? cbq.from?.id ?? "");
+    const cbData   = (cbq.data as string) ?? "";
+    const cbId     = cbq.id as string;
+    await tgAnswerCallback(botToken, cbId);
+
+    if (cbData.startsWith("sl:")) {
+      const postId = cbData.slice(3);
+      const authed = await ctx.runQuery(internal.agentTokens.getByChat, { telegramChatId: cbChatId });
+      if (!authed) return new Response("ok", { status: 200 });
+      const lists = await ctx.runQuery(internal.leads.getListsForUser, { userId: authed.userId });
+      if (lists.length === 0) {
+        await tgSend(botToken, cbChatId, "You have no lead lists yet\\. Create one from the Agentk dashboard first\\.");
+      } else {
+        const listRows = lists.map((l) => [{ text: l.name, callback_data: `sv:${postId}:${l._id}` }]);
+        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: cbChatId,
+            text: "📋 *Choose a list to save this post:*",
+            parse_mode: "MarkdownV2",
+            reply_markup: { inline_keyboard: listRows },
+          }),
+        });
+      }
+      return new Response("ok", { status: 200 });
+    }
+
+    if (cbData.startsWith("sv:")) {
+      const parts  = cbData.split(":");
+      const postId = parts[1];
+      const listId = parts.slice(2).join(":");
+      const authed = await ctx.runQuery(internal.agentTokens.getByChat, { telegramChatId: cbChatId });
+      if (!authed) return new Response("ok", { status: 200 });
+
+      const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId: authed.userId, postId });
+      if (!post) {
+        await tgSend(botToken, cbChatId, "❌ Post not found\\.");
+        return new Response("ok", { status: 200 });
+      }
+
+      const settings     = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
+      const keywords     = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
+      const stored       = (post as any).matchedKeywords ?? [];
+      const postText     = `${(post as any).title ?? ""} ${post.body}`.toLowerCase();
+      const matchedQuery = stored.length > 0 ? stored.join(", ") : (keywords.find((k: string) => postText.includes(k)) ?? "—");
+
+      await ctx.runMutation(internal.leads.addLeadInternal, {
+        userId:      authed.userId,
+        listId:      listId as any,
+        postId,
+        source:      "reddit_normal",
+        title:       (post as any).title ?? post.body.slice(0, 120),
+        url:         post.url,
+        subreddit:   post.subreddit,
+        author:      post.author,
+        ups:         post.ups,
+        numComments: post.numComments,
+        createdUtc:  post.createdUtc,
+        query:       matchedQuery,
+      });
+
+      await tgSend(botToken, cbChatId, "✅ Post saved to your lead list\\!");
+      return new Response("ok", { status: 200 });
+    }
+
     return new Response("ok", { status: 200 });
   }
 
@@ -356,7 +438,10 @@ export const sendAlerts = internalAction({
         `⬆️ ${esc(String(post.ups))} upvotes · 💬 ${esc(String(post.numComments))} comments\n` +
         `👤 u/${esc(post.author)} · ${esc(karma)} karma`;
 
-      const ok = await tgSend(botToken, chatId, alertText, post.url);
+      const saveBtn = normalPost
+        ? [{ text: "📋 Save to list", callback_data: `sl:${postId}` }]
+        : undefined;
+      const ok = await tgSend(botToken, chatId, alertText, post.url, saveBtn);
       if (ok) {
         await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "telegram" });
         sentThisRun++;

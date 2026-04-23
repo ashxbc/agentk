@@ -74,10 +74,11 @@ async function openDmChannel(token: string, userId: string): Promise<string | nu
   return data?.id ?? null;
 }
 
-async function sendDmMessage(token: string, channelId: string, content?: string, embeds?: object[]): Promise<boolean> {
+async function sendDmMessage(token: string, channelId: string, content?: string, embeds?: object[], components?: object[]): Promise<boolean> {
   const body: Record<string, unknown> = {};
-  if (content) body.content = content;
-  if (embeds)  body.embeds  = embeds;
+  if (content)    body.content    = content;
+  if (embeds)     body.embeds     = embeds;
+  if (components) body.components = components;
   const result = await discordApi(token, `/channels/${channelId}/messages`, "POST", body);
   return result !== null;
 }
@@ -200,6 +201,69 @@ export const discordWebhook = httpAction(async (ctx, request) => {
       await ctx.runMutation(internal.agentTokens.setPaused, { tokenId: authed._id, paused: false });
       return interaction("▶️ Alerts resumed! You'll start receiving Reddit alerts again.", true);
     }
+  }
+
+  // Component interaction (button press)
+  if (body.type === 3) {
+    const customId    = body.data?.custom_id as string;
+    const discordUser = (body.member?.user ?? body.user)?.id as string;
+
+    if (customId.startsWith("sl:")) {
+      const postId = customId.slice(3);
+      const authed = await ctx.runQuery(internal.agentTokens.getByDiscordUser, { discordUserId: discordUser });
+      if (!authed) return interaction("⚠️ Not connected. Use `/start` to connect.", true);
+      const lists = await ctx.runQuery(internal.leads.getListsForUser, { userId: authed.userId });
+      if (lists.length === 0) {
+        return interaction("You have no lead lists yet. Create one from the Agentk dashboard first.", true);
+      }
+      const listButtons = lists.slice(0, 5).map((l) => ({
+        type: 2, style: 1, label: l.name.slice(0, 80), custom_id: `sv:${postId}:${l._id}`,
+      }));
+      return new Response(JSON.stringify({
+        type: 4,
+        data: {
+          content: "**📋 Choose a list to save this post:**",
+          flags: 64,
+          components: [{ type: 1, components: listButtons }],
+        },
+      }), { headers: { "Content-Type": "application/json" } });
+    }
+
+    if (customId.startsWith("sv:")) {
+      const parts  = customId.split(":");
+      const postId = parts[1];
+      const listId = parts.slice(2).join(":");
+      const authed = await ctx.runQuery(internal.agentTokens.getByDiscordUser, { discordUserId: discordUser });
+      if (!authed) return interaction("⚠️ Not connected.", true);
+
+      const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId: authed.userId, postId });
+      if (!post) return interaction("❌ Post not found.", true);
+
+      const settings     = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
+      const keywords     = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
+      const stored       = (post as any).matchedKeywords ?? [];
+      const postText     = `${(post as any).title ?? ""} ${post.body}`.toLowerCase();
+      const matchedQuery = stored.length > 0 ? stored.join(", ") : (keywords.find((k: string) => postText.includes(k)) ?? "—");
+
+      await ctx.runMutation(internal.leads.addLeadInternal, {
+        userId:      authed.userId,
+        listId:      listId as any,
+        postId,
+        source:      "reddit_normal",
+        title:       (post as any).title ?? post.body.slice(0, 120),
+        url:         post.url,
+        subreddit:   post.subreddit,
+        author:      post.author,
+        ups:         post.ups,
+        numComments: post.numComments,
+        createdUtc:  post.createdUtc,
+        query:       matchedQuery,
+      });
+
+      return interaction("✅ Post saved to your lead list!", true);
+    }
+
+    return new Response("ok", { status: 200 });
   }
 
   // Modal submit
@@ -357,7 +421,11 @@ export const sendDiscordAlerts = internalAction({
         footer:    { text: "Agentk · Reddit Monitor" },
       };
 
-      const ok = await sendDmMessage(botToken, channelId, undefined, [embed]);
+      const saveComponents = normalPost ? [{
+        type: 1,
+        components: [{ type: 2, style: 2, label: "📋 Save to list", custom_id: `sl:${postId}` }],
+      }] : undefined;
+      const ok = await sendDmMessage(botToken, channelId, undefined, [embed], saveComponents);
       if (ok) {
         await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "discord" });
         sentThisRun++;
