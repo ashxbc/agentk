@@ -1,13 +1,16 @@
 "use client";
 
 const FEATURES = [
-  { label: "Keywords",         value: "50"        },
-  { label: "Subreddits",       value: "5"         },
-  { label: "Alerts",           value: "Unlimited" },
-  { label: "Telegram alerts",  value: true        },
-  { label: "Discord alerts",   value: true        },
-  { label: "Karma filter",     value: true        },
-  { label: "Alert cap control",value: true        },
+  { label: "Keywords",              value: "50"        },
+  { label: "Subreddits",            value: "5"         },
+  { label: "Alerts",                value: "Unlimited" },
+  { label: "Telegram alerts",       value: true        },
+  { label: "Discord alerts",        value: true        },
+  { label: "Karma filter",          value: true        },
+  { label: "Alert cap control",     value: true        },
+  { label: "Save leads to lists",   value: true        },
+  { label: "AI feed filtering",     value: true        },
+  { label: "Save leads from bots",  value: true        },
 ];
 
 export default function Pricing() {
