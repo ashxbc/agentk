@@ -114,6 +114,10 @@ const organizationSchema = {
   logo: `${SITE_URL}/logo.png`,
   description: "AgentK is a free Reddit lead generation tool that finds buyer-intent posts and delivers instant alerts via Telegram and Discord.",
   foundingDate: "2024",
+  sameAs: [
+    "https://www.wikidata.org/wiki/Q139520216",
+    "https://tryagentk.com",
+  ],
   contactPoint: {
     "@type": "ContactPoint",
     email: "support@agentk.io",
