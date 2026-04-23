@@ -180,22 +180,24 @@ function PostCard({
       ...style,
     }}>
       {/* Fire icon top-right */}
-      <div style={{ position: "absolute", top: 9, right: showBookmark ? 36 : 9, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, zIndex: 2 }}>
+      <div style={{ position: "absolute", top: 9, right: 9, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, zIndex: 2 }}>
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
           <path d="M12 2C9 7 7 10 7 14a5 5 0 0010 0c0-2.5-1.5-5-2.5-6 0 2-1 3.5-2.5 3.5S9.5 10 12 2z" fill="#FF6B35" />
         </svg>
       </div>
 
-      {/* Bookmark */}
+      {/* Bookmark — bottom-right, matches website */}
       {showBookmark && (
         <div style={{
-          position: "absolute", top: 9, right: 9, width: 22, height: 22,
+          position: "absolute", bottom: 7, right: 8, width: 24, height: 24,
           display: "flex", alignItems: "center", justifyContent: "center",
-          borderRadius: 6, zIndex: 3,
+          borderRadius: 8, zIndex: 3,
           color: bookmarkFilled ? "#DF849D" : "#B2A28C",
           transition: `color 0.2s ${EASE_OUT}`,
         }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill={bookmarkFilled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="13" height="13" viewBox="0 0 24 24"
+               fill={bookmarkFilled ? "#DF849D" : "none"}
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
           </svg>
         </div>
@@ -237,14 +239,6 @@ function PostCard({
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           {formatCount(post.numComments)}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 3, padding: "3px 8px", borderRadius: 20, background: "#f6f7f8", fontSize: 9.5, fontWeight: 700, color: "#878a8c" }}>
-          <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" />
-            <polyline points="16 6 12 2 8 6" />
-            <line x1="12" y1="2" x2="12" y2="15" />
-          </svg>
-          Share
         </div>
       </div>
     </div>
@@ -607,37 +601,27 @@ function ConversionScene({ visible }: { visible: boolean }) {
           transformOrigin: "center right",
           transition: `transform 0.9s ${EASE_OUT}`,
         }}>
-          <PostCard post={CONV_POST} />
+          <PostCard post={CONV_POST} showBookmark bookmarkFilled={clicked} />
         </div>
       </div>
 
-      {/* Lead added toast */}
+      {/* Lead added toast — pill style from the live dashboard, pinned to top */}
       <div style={{
-        position: "absolute", top: 24, left: "50%",
-        transform: toastOn ? "translate(-50%, 0) scale(1)" : "translate(-50%, -18px) scale(0.94)",
+        position: "absolute", top: 22, left: "50%",
+        transform: toastOn ? "translate(-50%, 0)" : "translate(-50%, -10px)",
         opacity: toastOn ? 1 : 0,
-        transition: `opacity 0.45s ${EASE_OUT}, transform 0.55s ${EASE_SPRING}`,
-        background: "rgba(255,255,255,0.96)",
-        backdropFilter: "blur(18px) saturate(160%)",
+        transition: `opacity 0.4s ${EASE_OUT}, transform 0.5s ${EASE_OUT}`,
+        background: "rgba(255,255,255,0.92)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
         border: "1px solid rgba(0,0,0,0.06)",
-        borderRadius: 12,
-        padding: "10px 14px",
-        display: "flex", alignItems: "center", gap: 10,
+        borderRadius: 999,
+        padding: "9px 18px",
+        fontSize: 13, fontWeight: 600, color: "#191918",
+        letterSpacing: "-0.005em",
         zIndex: 20,
       }}>
-        <div style={{
-          width: 24, height: 24, borderRadius: 6,
-          background: "linear-gradient(135deg,#FF9A8B,#DF849D)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-        </div>
-        <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#1c1c1c", letterSpacing: "-0.01em" }}>Lead added</div>
-          <div style={{ fontSize: 11, color: "#6e6e73", marginTop: 1 }}>Saved to “Prospects”</div>
-        </div>
+        Lead added
       </div>
 
       {/* Spreadsheet lead list */}
@@ -673,15 +657,6 @@ function LeadSheet({ active }: { active: boolean }) {
       {/* Sheet header */}
       <div style={{ padding: "10px 14px", borderBottom: `1px solid ${BORDER}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            width: 22, height: 22, borderRadius: 6,
-            background: "linear-gradient(135deg,#FF9A8B,#DF849D)",
-          }}>
-            <svg viewBox="0 0 24 24" width={12} height={12} fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-            </svg>
-          </span>
           <span style={{ fontSize: 13, fontWeight: 700, color: TEXT, letterSpacing: "-0.01em" }}>Prospects</span>
           <span style={{ fontSize: 11, color: MUTED, padding: "1px 7px", borderRadius: 9999, background: "rgba(0,0,0,0.04)" }}>
             {SPREADSHEET_ROWS.length}
@@ -694,13 +669,13 @@ function LeadSheet({ active }: { active: boolean }) {
       <div style={{ flex: 1, overflow: "hidden" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, color: BODY, tableLayout: "fixed" }}>
           <colgroup>
-            <col style={{ width: "34%" }} />
+            <col style={{ width: "32%" }} />
             <col style={{ width: "14%" }} />
             <col style={{ width: "13%" }} />
             <col style={{ width: "8%" }}  />
             <col style={{ width: "11%" }} />
             <col style={{ width: "7%" }}  />
-            <col style={{ width: "13%" }} />
+            <col style={{ width: "15%" }} />
           </colgroup>
           <thead>
             <tr>
@@ -728,8 +703,8 @@ function LeadSheet({ active }: { active: boolean }) {
                 <td style={{ ...cellBase(i === 0), textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{row.ups}</td>
                 <td style={{ ...cellBase(i === 0), textAlign: "right", fontVariantNumeric: "tabular-nums" }}>{row.comments}</td>
                 <td style={{ ...cellBase(i === 0), textAlign: "right", color: MUTED }}>{row.age}</td>
-                <td style={{ ...cellBase(i === 0) }}>
-                  <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 9999, background: "rgba(0,0,0,0.04)", fontSize: 10.5, fontWeight: 500 }}>
+                <td style={{ ...cellBase(i === 0), overflow: "visible" }}>
+                  <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 9999, background: "rgba(0,0,0,0.04)", fontSize: 10.5, fontWeight: 500, whiteSpace: "nowrap" }}>
                     {row.query}
                   </span>
                 </td>
