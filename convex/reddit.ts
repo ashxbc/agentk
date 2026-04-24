@@ -1,4 +1,4 @@
-import { action, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
+import { action, httpAction, internalAction, internalMutation, internalQuery, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 import { internal } from "./_generated/api";
@@ -330,6 +330,73 @@ export const searchSubreddits = action({
   },
 });
 
+// ── Proxy health logging ──────────────────────────────────────────────────────
+
+export const logProxyWarn = internalMutation({
+  args: { subreddits: v.string(), message: v.string() },
+  handler: async (ctx, { subreddits, message }) => {
+    await ctx.db.insert("proxyHealth", {
+      timestamp: Date.now(),
+      type: "warn",
+      subreddits,
+      message,
+    });
+  },
+});
+
+export const logProxyOk = internalMutation({
+  args: { subreddits: v.string(), message: v.string() },
+  handler: async (ctx, { subreddits, message }) => {
+    await ctx.db.insert("proxyHealth", {
+      timestamp: Date.now(),
+      type: "ok",
+      subreddits,
+      message,
+    });
+    // Prune entries older than 30 minutes to keep table lean
+    const cutoff = Date.now() - 30 * 60 * 1000;
+    const old = await ctx.db
+      .query("proxyHealth")
+      .withIndex("by_timestamp", (q) => q.lt("timestamp", cutoff))
+      .collect();
+    for (const row of old) await ctx.db.delete(row._id);
+  },
+});
+
+export const getRecentWarnCount = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const cutoff = Date.now() - 5 * 60 * 1000; // last 5 minutes
+    const rows = await ctx.db
+      .query("proxyHealth")
+      .withIndex("by_timestamp", (q) => q.gte("timestamp", cutoff))
+      .collect();
+    const warns = rows.filter((r) => r.type === "warn");
+    return {
+      warns: warns.length,
+      total: rows.length,
+      recent: warns.slice(-10).map((r) => ({
+        t: r.timestamp,
+        subs: r.subreddits,
+        msg: r.message,
+      })),
+    };
+  },
+});
+
+// ── HTTP endpoint: GET /proxy-health ─────────────────────────────────────────
+
+export const proxyHealthEndpoint = httpAction(async (ctx) => {
+  const secret = process.env.PROXY_HEALTH_SECRET;
+  // No secret configured → open (internal use only, not exposed publicly)
+  const cutoff = Date.now() - 5 * 60 * 1000;
+  const rows = await ctx.runQuery(internal.reddit.getRecentWarnCount, {});
+  return new Response(JSON.stringify(rows), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
+});
+
 // ── getAllActiveSettings — users with ≥1 keyword AND ≥1 subreddit ─────────────
 
 export const getAllActiveSettings = internalQuery({
@@ -398,8 +465,16 @@ export const globalFetch = internalAction({
         const posts = result.json.data?.children?.map((c: any) => c.data) ?? [];
         allPosts.push(...posts);
         console.log(`[globalFetch] r/${chunk.join("+")} via ${result.proxyHost} → ${posts.length} posts`);
+        await ctx.runMutation(internal.reddit.logProxyOk, {
+          subreddits: chunk.join("+"),
+          message: `${posts.length} posts via ${result.proxyHost}`,
+        });
       } else {
         console.warn(`[globalFetch] null response for r/${chunk.join("+")}`);
+        await ctx.runMutation(internal.reddit.logProxyWarn, {
+          subreddits: chunk.join("+"),
+          message: `null response`,
+        });
       }
       await new Promise((r) => setTimeout(r, 500 + jitter()));
     }

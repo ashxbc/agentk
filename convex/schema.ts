@@ -151,6 +151,13 @@ export default defineSchema({
     .index("by_token", ["token"])
     .index("by_user",  ["userId"]),
 
+  proxyHealth: defineTable({
+    timestamp:  v.number(),
+    type:       v.string(), // "warn" | "ok"
+    subreddits: v.string(),
+    message:    v.string(),
+  }).index("by_timestamp", ["timestamp"]),
+
   aiModeSettings: defineTable({
     userId:         v.id("users"),
     intents:        v.array(v.string()),
