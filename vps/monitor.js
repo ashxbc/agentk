@@ -11,7 +11,7 @@ const { execSync, exec } = require("child_process");
 const fs   = require("fs");
 const path = require("path");
 
-const CONVEX_URL    = process.env.CONVEX_URL || "https://careful-bloodhound-344.convex.cloud";
+const CONVEX_URL    = process.env.CONVEX_URL || "https://careful-bloodhound-344.convex.site";
 const HEALTH_URL    = `${CONVEX_URL}/proxy-health`;
 const POLL_INTERVAL = 60_000;       // check every 60s
 const WARN_THRESHOLD = 3;           // restarts if warns > this
