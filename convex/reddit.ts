@@ -504,60 +504,63 @@ export const globalFetch = internalAction({
             });
             const duplicates = aiCandidates.length - insertedCandidates.length;
 
-            // ONE classifier call for all intents — the model tags each
-            // matching post with the intent number(s) it satisfied. We map
-            // those back to normalized intent keys to produce (postId, intent)
-            // pairs for storage.
-            const { postIds: uniqueMatchedIds, pairs, error } = await matchPostsToIntents(
-              aiCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
-              cleanIntents,
-              apiKey,
-              `AI ${tag}`,
-            );
-
-            // Per-intent breakdown for logging.
-            const perIntentCounts = new Map<string, number>();
-            for (const p of pairs) {
-              perIntentCounts.set(p.intent, (perIntentCounts.get(p.intent) ?? 0) + 1);
-            }
-            const perIntentStr = cleanIntents
-              .map((i) => {
-                const k = normalizeIntent(i);
-                return `"${k.slice(0, 28)}"=${perIntentCounts.get(k) ?? 0}`;
-              })
-              .join(", ");
-
+            // Only classify posts that are genuinely new this cycle.
+            // Duplicates were already classified in a previous cycle — re-sending
+            // them wastes tokens without producing new information.
             const insertedSet = new Set(insertedCandidates);
-            const newMatches = uniqueMatchedIds.filter((id) => insertedSet.has(id));
+            const newCandidates = aiCandidates.filter((p) => insertedSet.has(p.postId));
 
-            if (error) {
-              console.warn(
-                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | classifier=ERROR`,
+            if (newCandidates.length === 0) {
+              console.log(
+                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=0 new | duplicate=${duplicates} | classifier=skipped`,
               );
             } else {
-              console.log(
-                `[AI]     ${tag} | candidates=${aiCandidates.length} | inserted=${insertedCandidates.length} new | duplicate=${duplicates} | per-intent=[${perIntentStr}] | unique-matched=${uniqueMatchedIds.length} | new-matched=${newMatches.length} | pairs-written=${pairs.length}`,
+              // ONE classifier call for all intents — the model tags each
+              // matching post with the intent number(s) it satisfied. We map
+              // those back to normalized intent keys to produce (postId, intent)
+              // pairs for storage.
+              const { postIds: uniqueMatchedIds, pairs, error } = await matchPostsToIntents(
+                newCandidates.map((p) => ({ postId: p.postId, title: p.title, body: p.body })),
+                cleanIntents,
+                apiKey,
+                `AI ${tag}`,
               );
-            }
 
-            if (pairs.length > 0) {
-              await ctx.runMutation(internal.aiFilter.appendMatchedPosts, {
-                userId, entries: pairs,
-              });
-              // Denormalize onto each redditResultsAi row so the column shows
-              // which intent queries matched that post.
-              await ctx.runMutation(internal.reddit.tagAiPostsWithIntents, {
-                userId, pairs,
-              });
+              // Per-intent breakdown for logging.
+              const perIntentCounts = new Map<string, number>();
+              for (const p of pairs) {
+                perIntentCounts.set(p.intent, (perIntentCounts.get(p.intent) ?? 0) + 1);
+              }
+              const perIntentStr = cleanIntents
+                .map((i) => {
+                  const k = normalizeIntent(i);
+                  return `"${k.slice(0, 28)}"=${perIntentCounts.get(k) ?? 0}`;
+                })
+                .join(", ");
+
+              if (error) {
+                console.warn(
+                  `[AI]     ${tag} | candidates=${aiCandidates.length} | new=${newCandidates.length} | duplicate=${duplicates} | classifier=ERROR`,
+                );
+              } else {
+                console.log(
+                  `[AI]     ${tag} | candidates=${aiCandidates.length} | new=${newCandidates.length} | duplicate=${duplicates} | per-intent=[${perIntentStr}] | unique-matched=${uniqueMatchedIds.length} | pairs-written=${pairs.length}`,
+                );
+              }
+
+              if (pairs.length > 0) {
+                await ctx.runMutation(internal.aiFilter.appendMatchedPosts, {
+                  userId, entries: pairs,
+                });
+                // Denormalize onto each redditResultsAi row so the column shows
+                // which intent queries matched that post.
+                await ctx.runMutation(internal.reddit.tagAiPostsWithIntents, {
+                  userId, pairs,
+                });
+              }
+
+              for (const id of uniqueMatchedIds) newPostIdsForAlerts.add(id);
             }
-            // Alert every intent-matched post — not just newly-inserted ones.
-            // Reason: Reddit keeps returning the same posts for several cycles,
-            // so by the time the classifier matches one it's typically already
-            // stored, which made newMatches=0 and silently killed alerts. The
-            // downstream alertedPosts table already dedupes per (user, post,
-            // platform), and the 30-min post-age cap in sendAlerts prevents
-            // alerting on stale hits. So it's safe to feed the full set.
-            for (const id of uniqueMatchedIds) newPostIdsForAlerts.add(id);
           }
         }
       } else {
