@@ -499,7 +499,7 @@ export const globalFetch = internalAction({
     if (filteredPosts.length === 0) return;
 
     // 6. Unified fan-out: per user, run normal flow + AI flow, then fire alerts once
-    const apiKey       = process.env.OPENROUTER_API_KEY;
+    const apiKey       = process.env.GROQ_API_KEY;
     const normalByUser = new Map(allSettings.map((s) => [String(s.userId), s]));
     const aiByUser     = new Map(allAiSettings.map((s) => [String(s.userId), s]));
     const allUserIdStrs = new Set<string>([...normalByUser.keys(), ...aiByUser.keys()]);
@@ -564,7 +564,7 @@ export const globalFetch = internalAction({
         if (cleanIntents.length === 0 || subreddits.length === 0) {
           console.log(`[AI]     ${tag} | skipped (intents=${cleanIntents.length}, subs=${subreddits.length})`);
         } else if (!apiKey) {
-          console.warn(`[AI]     ${tag} | skipped (OPENROUTER_API_KEY not set)`);
+          console.warn(`[AI]     ${tag} | skipped (GROQ_API_KEY not set)`);
         } else {
           const allowedSubs = new Set(subreddits.map((s) => s.toLowerCase()));
           const aiCandidates = filteredPosts
