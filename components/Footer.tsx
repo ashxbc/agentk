@@ -45,6 +45,11 @@ export default function Footer() {
           ))}
         </nav>
 
+        {/* Badge */}
+        <a href="https://startupfa.me/s/agentk?utm_source=tryagentk.com" target="_blank" rel="noopener noreferrer">
+          <img src="https://startupfa.me/badges/featured-badge.webp" alt="AgentK - Featured on Startup Fame" width={171} height={54} />
+        </a>
+
         {/* Copyright */}
         <p className="text-xs" style={{ color: "#C8C4BE" }}>
           © {new Date().getFullYear()} AgentK. All rights reserved.
