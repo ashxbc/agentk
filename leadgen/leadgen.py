@@ -224,19 +224,12 @@ Extract:
 # ─────────────────────────────────────────────────────────────
 # SUBREDDIT VALIDATION
 # ─────────────────────────────────────────────────────────────
-def validate_subreddit(name: str) -> bool:
-    try:
-        r = httpx.get(
-            f"https://www.reddit.com/r/{name}/about.json",
-            headers=REDDIT_HEADERS, timeout=8
-        )
-        if r.status_code != 200:
-            return False
-        data = r.json()
-        subs = data.get("data", {}).get("subscribers", 0)
-        return subs >= 5000
-    except Exception:
-        return False
+def clean_subreddit_name(name: str) -> str:
+    import re
+    name = name.strip().lstrip("r/").strip()
+    # Keep only valid subreddit characters (letters, digits, underscores)
+    name = re.sub(r"[^A-Za-z0-9_]", "", name)
+    return name
 
 
 # ─────────────────────────────────────────────────────────────
@@ -271,25 +264,14 @@ Rules:
 """,
     )
 
-    # Validate subreddits
-    print("⏳ Validating subreddits (>5k subscribers)...")
-    valid_subs = []
+    # Clean subreddit names
+    clean_subs = []
     for sub in result.get("subreddits", []):
-        if validate_subreddit(sub):
-            valid_subs.append(sub)
-            print(f"  ✅ r/{sub}")
-        else:
-            print(f"  ❌ r/{sub} (invalid or <5k subs)")
+        cleaned = clean_subreddit_name(sub)
+        if cleaned:
+            clean_subs.append(cleaned)
 
-    if len(valid_subs) < 3:
-        print("⚠️  Less than 3 valid subreddits found — add some manually.")
-        extra = input("Enter subreddit names separated by commas: ").strip()
-        for s in extra.split(","):
-            s = s.strip().lstrip("r/")
-            if s:
-                valid_subs.append(s)
-
-    result["subreddits"] = valid_subs[:7]
+    result["subreddits"] = clean_subs[:7]
 
     print("\n📡 Subreddits:", ", ".join(f"r/{s}" for s in result["subreddits"]))
     print("\n🎯 Intents:")
