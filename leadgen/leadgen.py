@@ -46,7 +46,12 @@ GROQ_BIG   = "llama-3.3-70b-versatile"   # reasoning, onboarding
 GROQ_SMALL = "llama-3.1-8b-instant"      # cheap classification
 
 REDDIT_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (compatible; LeadGen/1.0)"
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "Referer": "https://www.reddit.com/",
+    "Origin": "https://www.reddit.com",
 }
 
 # ─────────────────────────────────────────────────────────────
