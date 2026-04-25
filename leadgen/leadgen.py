@@ -16,6 +16,16 @@ from datetime import datetime, timezone
 import httpx
 from groq import Groq
 
+# Load .env file if present (no dependency needed)
+_env_path = os.path.join(os.path.dirname(__file__), ".env")
+if os.path.exists(_env_path):
+    with open(_env_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith("#") and "=" in _line:
+                _k, _v = _line.split("=", 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 # ── optional: scraping
 try:
     import trafilatura
@@ -423,14 +433,17 @@ def format_alert(post: dict, classification: dict, reply: str) -> str:
 # MONITORING LOOP
 # ─────────────────────────────────────────────────────────────
 def monitor_loop(config: dict):
-    groq_client = Groq(api_key=config["groq_api_key"])
+    # Env vars take priority over config.json
+    groq_key  = os.environ.get("GROQ_API_KEY")        or config["groq_api_key"]
+    bot_token = os.environ.get("TELEGRAM_BOT_TOKEN")  or config["telegram_bot_token"]
+    chat_id   = os.environ.get("TELEGRAM_CHAT_ID")    or config["telegram_chat_id"]
+
+    groq_client = Groq(api_key=groq_key)
     con = init_db()
 
     subreddits = config["subreddits"]
     intents    = config["intents"]
     profile    = config["profile"]
-    bot_token  = config["telegram_bot_token"]
-    chat_id    = config["telegram_chat_id"]
 
     print(f"\n🚀 Monitoring {len(subreddits)} subreddits | {len(intents)} intents | every {POLL_INTERVAL}s")
     print(f"📡 Subreddits: {', '.join(subreddits)}")
@@ -483,7 +496,7 @@ def run_setup():
     print("       AgentK LeadGen — Setup")
     print("═══════════════════════════════════════\n")
 
-    groq_key = input("Groq API key: ").strip()
+    groq_key = os.environ.get("GROQ_API_KEY") or input("Groq API key: ").strip()
     client   = Groq(api_key=groq_key)
 
     role = ""
@@ -496,8 +509,8 @@ def run_setup():
         profile = onboard_builder(client)
 
     generated    = generate_subreddits_and_intents(client, profile)
-    bot_token    = input("\nTelegram bot token: ").strip()
-    chat_id      = input("Telegram chat ID: ").strip()
+    bot_token    = os.environ.get("TELEGRAM_BOT_TOKEN") or input("\nTelegram bot token: ").strip()
+    chat_id      = os.environ.get("TELEGRAM_CHAT_ID")   or input("Telegram chat ID: ").strip()
 
     config = {
         "groq_api_key":        groq_key,
