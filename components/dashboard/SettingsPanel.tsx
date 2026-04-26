@@ -13,7 +13,7 @@ interface Props {
 
 type Msg = { from: "bot" | "user"; html?: string; text?: string };
 
-const COMMANDS = ["/email", "/account", "/token", "/cap", "/delete"] as const;
+const COMMANDS = ["/email", "/account", "/token", "/delete"] as const;
 
 export default function SettingsPanel({ open }: Props) {
   const { signOut }    = useAuthActions();
@@ -23,13 +23,18 @@ export default function SettingsPanel({ open }: Props) {
   const tokenRow       = useQuery(api.agentTokens.getToken);
   const updateName     = useMutation(api.users.updateName);
   const deleteAccount  = useMutation(api.users.deleteAccount);
-  const setAlertCap    = useMutation(api.userSettings.setAlertCap);
-  const userSettings   = useQuery(api.userSettings.getUserSettings);
+  const resetOnboarding = useMutation(api.userProfile.resetOnboarding);
+  const myQueries      = useQuery(api.userQueries.getMyQueries);
+  const saveQueries    = useMutation(api.userQueries.saveQueries);
 
   const [msgs,     setMsgs]     = useState<Msg[]>([]);
   const [input,    setInput]    = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [booted,   setBooted]   = useState(false);
+  const [editingSetup, setEditingSetup] = useState(false);
+  const [editSubs, setEditSubs] = useState<string[]>([]);
+  const [editQs,   setEditQs]   = useState<string[]>([]);
+  const [newSub,   setNewSub]   = useState("");
 
   const threadRef = useRef<HTMLDivElement>(null);
   const inputRef  = useRef<HTMLInputElement>(null);
@@ -57,7 +62,6 @@ export default function SettingsPanel({ open }: Props) {
 <b>/email</b> — view your email &amp; auth status<br>
 <b>/account</b> — view or update your display name<br>
 <b>/token</b> — your Telegram &amp; Discord alert token<br>
-<b>/cap</b> — set max alerts per hour (e.g. /cap 5)<br>
 <b>/delete</b> — delete your account`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, booted, user]);
@@ -124,27 +128,6 @@ export default function SettingsPanel({ open }: Props) {
           });
         }
 
-      } else if (cmd === "/cap") {
-        const current = userSettings?.alertsPerHour;
-        if (current && current > 0) {
-          addBot(`Current alert cap: <strong>${current} per hour</strong>.<br><br>To change: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap N</span><br>To remove: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap 0</span>`);
-        } else {
-          addBot(`No alert cap set. Use <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap N</span> to limit alerts per hour.`);
-        }
-
-      } else if (cmd.startsWith("/cap ")) {
-        const n = parseInt(trimmed.slice(5).trim(), 10);
-        if (isNaN(n) || n < 0) {
-          addBot(`Invalid number. Try: <span style="font-family:monospace;background:#F0EFED;padding:2px 8px;border-radius:4px;font-size:11px">/cap 5</span>`);
-          return;
-        }
-        setAlertCap({ alertsPerHour: n === 0 ? undefined : n }).then(() => {
-          addBot(n === 0
-            ? `Alert cap removed. You'll receive all alerts.`
-            : `Alert cap set to <strong>${n} per hour</strong> across Telegram and Discord.`
-          );
-        }).catch(() => addBot(`Something went wrong. Please try again.`));
-
       } else if (cmd === "/delete") {
         addBot(
           `⚠️ <strong>This will permanently delete your account and all data.</strong><br><br>` +
@@ -160,7 +143,7 @@ export default function SettingsPanel({ open }: Props) {
         });
 
       } else {
-        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, <b>/cap</b>, or <b>/delete</b>.`);
+        addBot(`Unknown command. Try <b>/email</b>, <b>/account</b>, <b>/token</b>, or <b>/delete</b>.`);
       }
     }, 250);
   }
@@ -179,6 +162,115 @@ export default function SettingsPanel({ open }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "#FDF7EF" }}>
+      {/* Setup management */}
+      <div style={{ padding: "24px", borderBottom: "1px solid rgba(0,0,0,0.06)", background: "#fff" }}>
+        <p style={{ fontSize: "13px", fontWeight: 600, color: "#191918", margin: "0 0 4px" }}>Your setup</p>
+        <p style={{ fontSize: "12px", color: "#B2A28C", margin: "0 0 16px" }}>
+          {myQueries ? `${myQueries.subreddits.length} subreddits · ${myQueries.queries.length} queries` : "Not configured"}
+        </p>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            onClick={() => {
+              setEditSubs(myQueries?.subreddits ?? []);
+              setEditQs(myQueries?.queries ?? []);
+              setEditingSetup(true);
+            }}
+            style={{
+              padding: "8px 16px", borderRadius: "10px", border: "1.5px solid rgba(0,0,0,0.1)",
+              background: "transparent", fontSize: "13px", fontWeight: 600,
+              color: "#3D3A36", cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            Edit setup
+          </button>
+          <button
+            onClick={async () => {
+              if (confirm("This will restart your onboarding. Continue?")) {
+                await resetOnboarding({});
+                window.location.reload();
+              }
+            }}
+            style={{
+              padding: "8px 16px", borderRadius: "10px", border: "1.5px solid rgba(0,0,0,0.1)",
+              background: "transparent", fontSize: "13px", fontWeight: 600,
+              color: "#B2A28C", cursor: "pointer", fontFamily: "inherit",
+            }}
+          >
+            Redo onboarding
+          </button>
+        </div>
+      </div>
+
+      {/* Edit setup modal */}
+      {editingSetup && (
+        <div style={{
+          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 500,
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <div style={{
+            width: "min(520px, calc(100vw - 40px))", background: "#fff",
+            borderRadius: "20px", padding: "40px", boxSizing: "border-box",
+            maxHeight: "85vh", overflowY: "auto",
+          }}>
+            <p style={{ fontSize: "20px", fontWeight: 700, color: "#191918", marginBottom: "24px" }}>Edit setup</p>
+
+            <p style={{ fontSize: "12px", fontWeight: 500, color: "#B2A28C", textTransform: "uppercase", marginBottom: "10px" }}>Subreddits ({editSubs.length}/10)</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
+              {editSubs.map((s, i) => (
+                <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: "4px", padding: "5px 10px 5px 12px", borderRadius: "9999px", background: "#FDF7EF", border: "1px solid rgba(0,0,0,0.08)", fontSize: "13px", fontWeight: 500 }}>
+                  r/{s}
+                  <button onClick={() => setEditSubs(editSubs.filter((_, j) => j !== i))} style={{ background: "none", border: "none", cursor: "pointer", color: "#B2A28C", padding: "0 0 0 2px" }}>×</button>
+                </span>
+              ))}
+            </div>
+            {editSubs.length < 10 && (
+              <input
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1.5px solid rgba(0,0,0,0.1)", fontSize: "13px", fontFamily: "inherit", boxSizing: "border-box", marginBottom: "20px" }}
+                value={newSub}
+                placeholder="Add subreddit and press Enter…"
+                onChange={(e) => setNewSub(e.target.value.replace(/^r\//i, ""))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newSub.trim()) {
+                    setEditSubs([...editSubs, newSub.trim()]);
+                    setNewSub("");
+                  }
+                }}
+              />
+            )}
+
+            <p style={{ fontSize: "12px", fontWeight: 500, color: "#B2A28C", textTransform: "uppercase", marginBottom: "10px" }}>Queries</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "24px" }}>
+              {editQs.map((q, i) => (
+                <div key={i} style={{ position: "relative" }}>
+                  <input
+                    style={{ width: "100%", padding: "10px 48px 10px 12px", borderRadius: "10px", border: "1.5px solid rgba(0,0,0,0.1)", fontSize: "13px", fontFamily: "inherit", boxSizing: "border-box" }}
+                    value={q}
+                    maxLength={80}
+                    onChange={(e) => { const n = [...editQs]; n[i] = e.target.value; setEditQs(n); }}
+                  />
+                  <span style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "11px", color: "#B2A28C" }}>{q.length}/80</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", gap: "10px" }}>
+              <button onClick={() => setEditingSetup(false)} style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1.5px solid rgba(0,0,0,0.1)", background: "transparent", fontSize: "15px", fontWeight: 600, cursor: "pointer", fontFamily: "inherit" }}>
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await saveQueries({ subreddits: editSubs, queries: editQs });
+                  setEditingSetup(false);
+                }}
+                style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "none", background: "linear-gradient(135deg,#FF9A8B,#DF849D)", color: "#fff", fontSize: "15px", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Thread */}
       <div ref={threadRef} style={{ flex: 1, overflowY: "auto", padding: "14px 14px 6px", display: "flex", flexDirection: "column", gap: "4px" }}>
         {msgs.map((m, i) => (
@@ -212,11 +304,10 @@ export default function SettingsPanel({ open }: Props) {
           <div style={{ position: "absolute", bottom: "calc(100% + 6px)", left: 0, background: "#fff", borderRadius: "14px", border: "1px solid rgba(0,0,0,0.08)", padding: "10px", width: "228px", zIndex: 10 }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
               {[
-                ["/email",     "Email & auth status"],
-                ["/account",   "View or rename"],
-                ["/token",     "Your alert token"],
-                ["/cap",    "Set alert cap"],
-                ["/delete", "Delete account"],
+                ["/email",   "Email & auth status"],
+                ["/account", "View or rename"],
+                ["/token",   "Your alert token"],
+                ["/delete",  "Delete account"],
               ].map(([cmd, desc]) => (
                 <button key={cmd} onClick={() => { setMenuOpen(false); setInput(""); dispatch(cmd); }}
                   style={{ display: "flex", flexDirection: "column", padding: "8px 10px", borderRadius: "8px", cursor: "pointer", border: "none", background: "none", fontFamily: "inherit", textAlign: "left" }}
