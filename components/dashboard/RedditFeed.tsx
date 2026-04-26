@@ -111,14 +111,12 @@ export default function RedditFeed({ posts, loading }: Props) {
         cursor:pointer;
         transform:rotate(${rotDeg}deg);
         z-index:${zIdx};
-        transition:box-shadow 0.2s,transform 0.2s;
+        transition:transform 0.2s;
       `;
       card.onmouseenter = () => {
-        card.style.boxShadow = "0 8px 32px rgba(0,0,0,0.12)";
         card.style.transform = `rotate(${rotDeg}deg) translateY(-2px)`;
       };
       card.onmouseleave = () => {
-        card.style.boxShadow = "0 2px 12px rgba(0,0,0,0.05)";
         card.style.transform = `rotate(${rotDeg}deg)`;
       };
 
@@ -126,11 +124,11 @@ export default function RedditFeed({ posts, loading }: Props) {
       const title    = p.title || p.body.slice(0, 120);
 
       card.innerHTML = `
-        <div style="position:absolute;top:9px;right:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;z-index:2">
+        <button class="kf" style="position:absolute;top:9px;right:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;z-index:2;background:none;border:none;cursor:pointer;padding:0">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
             <path d="M12 2C9 7 7 10 7 14a5 5 0 0010 0c0-2.5-1.5-5-2.5-6 0 2-1 3.5-2.5 3.5S9.5 10 12 2z" fill="#FF6B35"/>
           </svg>
-        </div>
+        </button>
         <div style="flex:1;min-width:0;padding:12px 42px 10px 12px">
           <div style="font-size:9.5px;color:#878a8c;margin-bottom:6px;display:flex;align-items:center;gap:4px">
             <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:${subColor};flex-shrink:0">
@@ -139,7 +137,7 @@ export default function RedditFeed({ posts, loading }: Props) {
               </svg>
             </span>
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1">
-              <b style="color:#1c1c1c;font-weight:700">r/${p.subreddit}</b> · <button class="kf" style="background:none;border:none;cursor:pointer;padding:0;font-size:9.5px;color:#878a8c;font-family:inherit">u/${p.author}</button> · ${formatAge(p.createdUtc)}
+              <b style="color:#1c1c1c;font-weight:700">r/${p.subreddit}</b> · u/${p.author} · ${formatAge(p.createdUtc)}
             </span>
           </div>
           <div style="font-size:12.5px;font-weight:600;color:#1c1c1c;line-height:1.45;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden">
