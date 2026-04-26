@@ -4,6 +4,13 @@ import { getAuthUserId } from "@convex-dev/auth/server";
 
 export const fetchProductInfo = action({
   args: { url: v.string() },
+  returns: v.object({
+    name: v.string(),
+    tagline: v.string(),
+    description: v.string(),
+    tags: v.array(v.string()),
+    error: v.optional(v.string()),
+  }),
   handler: async (ctx, { url }): Promise<{
     name: string;
     tagline: string;
@@ -34,8 +41,9 @@ export const fetchProductInfo = action({
         html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)["']/i)?.[1] ??
         "";
 
-      const tagline     = (metaDesc || ogDesc).trim().slice(0, 160);
-      const description = tagline.slice(0, 400);
+      const rawDesc     = (metaDesc || ogDesc).trim();
+      const tagline     = rawDesc.slice(0, 160);
+      const description = rawDesc.slice(0, 400);
 
       const kwMatch = html.match(/<meta[^>]+name=["']keywords["'][^>]+content=["']([^"']+)["']/i);
       const tags = kwMatch
