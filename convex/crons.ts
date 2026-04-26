@@ -5,7 +5,7 @@ const crons = cronJobs();
 
 crons.interval(
   "global-reddit-fetch",
-  { minutes: 5 },
+  { minutes: 15 },
   internal.reddit.globalFetch,
   {}
 );
