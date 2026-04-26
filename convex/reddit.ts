@@ -67,7 +67,7 @@ async function fetchJSON(subs: string[]): Promise<{ json: any; proxyHost: string
 
 // ── Karma cache ───────────────────────────────────────────────────────────────
 
-const FIVE_MIN_MS = 24 * 60 * 60 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
 export const getKarmaCached = internalQuery({
   args: { author: v.string() },
@@ -88,7 +88,7 @@ export const fetchKarma = action({
   args: { author: v.string() },
   handler: async (ctx, { author }): Promise<number | null> => {
     const cached = await ctx.runQuery(internal.reddit.getKarmaCached, { author });
-    if (cached && Date.now() - cached.fetchedAt < FIVE_MIN_MS) return cached.karma;
+    if (cached && Date.now() - cached.fetchedAt < TWENTY_FOUR_HOURS_MS) return cached.karma;
     try {
       const res = await fetch(karmaUrl(author), { headers: proxyHeaders() });
       if (!res.ok) {
@@ -175,7 +175,6 @@ export const getRecentWarnCount = internalQuery({
 // ── HTTP endpoint: GET /proxy-health ─────────────────────────────────────────
 
 export const proxyHealthEndpoint = httpAction(async (ctx) => {
-  const secret = process.env.PROXY_HEALTH_SECRET;
   // No secret configured → open (internal use only, not exposed publicly)
   const cutoff = Date.now() - 5 * 60 * 1000;
   const rows = await ctx.runQuery(internal.reddit.getRecentWarnCount, {});
@@ -306,7 +305,7 @@ export const globalFetch = internalAction({
       const matchMap    = new Map(matches.map((m) => [m.postId, m.matchedQueries]));
       const toInsert    = candidates
         .filter((p) => matchMap.has(p.postId))
-        .map((p) => ({ ...p, matchedQueries: matchMap.get(p.postId)! }));
+        .map(({ type: _type, ...p }) => ({ ...p, matchedQueries: matchMap.get(p.postId)! }));
 
       const inserted: string[] = await ctx.runMutation(internal.feedPosts.upsertFeedPosts, {
         userId,
