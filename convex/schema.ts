@@ -40,7 +40,7 @@ export default defineSchema({
     icpRole:            v.optional(v.string()),
     icpPainPoints:      v.optional(v.string()),
     icpSwitchTrigger:   v.optional(v.string()),
-    // Completion gate — null = onboarding not done
+    // Completion gate — absent = onboarding not done
     completedAt:        v.optional(v.number()),
   }).index("by_user", ["userId"]),
 
@@ -68,7 +68,8 @@ export default defineSchema({
   })
     .index("by_user",         ["userId"])
     .index("by_user_post",    ["userId", "postId"])
-    .index("by_user_fetched", ["userId", "fetchedAt"]),
+    .index("by_user_fetched", ["userId", "fetchedAt"])
+    .index("by_user_created", ["userId", "createdUtc"]),
 
   // ── Unchanged tables ────────────────────────────────────────────────────────
 
