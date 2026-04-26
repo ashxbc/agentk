@@ -170,40 +170,60 @@ function PostCard({
   const color = getSubredditColor(post.subreddit);
   return (
     <div style={{
-      width: 220,
+      width: 265,
       background: "#fff",
-      borderRadius: 16,
-      border: "1px solid rgba(0,0,0,0.06)",
-      boxShadow: "0 2px 12px rgba(0,0,0,0.05)",
+      borderRadius: 12,
+      border: "1px solid rgba(0,0,0,0.08)",
       overflow: "hidden",
       display: "flex",
       flexDirection: "column",
       ...style,
     }}>
-      {/* Subreddit header band */}
-      <div style={{ background: `${color}14`, padding: "8px 10px", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
-        <span style={{ fontSize: 10, fontWeight: 700, color, letterSpacing: ".02em" }}>r/{post.subreddit}</span>
+      {/* Fire icon top-right */}
+      <div style={{ position: "absolute", top: 9, right: 9, width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 6, zIndex: 2 }}>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+          <path d="M12 2C9 7 7 10 7 14a5 5 0 0010 0c0-2.5-1.5-5-2.5-6 0 2-1 3.5-2.5 3.5S9.5 10 12 2z" fill="#FF6B35" />
+        </svg>
       </div>
 
-      {/* Body */}
-      <div style={{ padding: 10 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 7 }}>
-          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#B2A28C" strokeWidth="2" style={{ flexShrink: 0 }}>
-            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      {/* Bookmark — bottom-right */}
+      {showBookmark && (
+        <div style={{
+          position: "absolute", bottom: 7, right: 8, width: 24, height: 24,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          borderRadius: 8, zIndex: 3,
+          color: bookmarkFilled ? "#DF849D" : "#B2A28C",
+          transition: `color 0.2s ${EASE_OUT}`,
+        }}>
+          <svg width="13" height="13" viewBox="0 0 24 24"
+               fill={bookmarkFilled ? "#DF849D" : "none"}
+               stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
           </svg>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1, fontSize: 11, color: "#B2A28C" }}>
-            u/{post.author} · {post.age}
+        </div>
+      )}
+
+      {/* Body */}
+      <div style={{ flex: 1, minWidth: 0, padding: "12px 42px 10px 12px" }}>
+        <div style={{ fontSize: 9.5, color: "#878a8c", marginBottom: 6, display: "flex", alignItems: "center", gap: 4 }}>
+          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 14, height: 14, borderRadius: "50%", background: color, flexShrink: 0 }}>
+            <svg viewBox="0 0 20 20" width="10" height="10" fill="white">
+              <path d="M16.67 10a1.46 1.46 0 00-2.47-1 7.12 7.12 0 00-3.85-1.23l.65-3.07 2.13.45a1 1 0 101.07-1 1 1 0 00-.96.68l-2.38-.5a.22.22 0 00-.26.16l-.73 3.44a7.14 7.14 0 00-3.89 1.23 1.46 1.46 0 10-1.61 2.39 2.87 2.87 0 000 .44c0 2.24 2.61 4.06 5.83 4.06s5.83-1.82 5.83-4.06a2.87 2.87 0 000-.44 1.46 1.46 0 00.55-1.55zM8 11a1 1 0 111 1 1 1 0 01-1-1zm5.37 2.71a3.39 3.39 0 01-2.37.63 3.39 3.39 0 01-2.37-.63.22.22 0 01.31-.31 2.93 2.93 0 002.06.47 2.93 2.93 0 002.06-.47.22.22 0 01.31.31zM13 12a1 1 0 111-1 1 1 0 01-1 1z" />
+            </svg>
+          </span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}>
+            <b style={{ color: "#1c1c1c", fontWeight: 700 }}>r/{post.subreddit}</b>{" · "}u/{post.author} · {post.age}
           </span>
         </div>
         <div style={{
           fontSize: 12.5, fontWeight: 600, color: "#1c1c1c", lineHeight: 1.45,
-          display: "-webkit-box", WebkitLineClamp: 5, WebkitBoxOrient: "vertical", overflow: "hidden",
+          display: "-webkit-box", WebkitLineClamp: 4, WebkitBoxOrient: "vertical", overflow: "hidden",
         } as React.CSSProperties}>
           {post.title}
         </div>
       </div>
 
-      {/* Footer */}
+      {/* Actions */}
       <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "7px 10px", borderTop: "1px solid rgba(0,0,0,0.05)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#f6f7f8", borderRadius: 20, padding: "3px 8px" }}>
           <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="#878a8c" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -220,19 +240,6 @@ function PostCard({
           </svg>
           {formatCount(post.numComments)}
         </div>
-        {showBookmark && (
-          <div style={{
-            marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center",
-            color: bookmarkFilled ? "#DF849D" : "#B2A28C",
-            transition: `color 0.2s ${EASE_OUT}`,
-          }}>
-            <svg width="13" height="13" viewBox="0 0 24 24"
-                 fill={bookmarkFilled ? "#DF849D" : "none"}
-                 stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-            </svg>
-          </div>
-        )}
       </div>
     </div>
   );
