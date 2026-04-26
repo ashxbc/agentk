@@ -137,67 +137,6 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
     const cbId     = cbq.id as string;
     await tgAnswerCallback(botToken, cbId);
 
-    if (cbData.startsWith("sl:")) {
-      const postId = cbData.slice(3);
-      const authed = await ctx.runQuery(internal.agentTokens.getByChat, { telegramChatId: cbChatId });
-      if (!authed) return new Response("ok", { status: 200 });
-      const lists = await ctx.runQuery(internal.leads.getListsForUser, { userId: authed.userId });
-      if (lists.length === 0) {
-        await tgSend(botToken, cbChatId, "You have no lead lists yet\\. Create one from the Agentk dashboard first\\.");
-      } else {
-        const listRows = lists.map((l) => [{ text: l.name, callback_data: `sv:${postId}:${l._id}` }]);
-        await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: cbChatId,
-            text: "📋 *Choose a list to save this post:*",
-            parse_mode: "MarkdownV2",
-            reply_markup: { inline_keyboard: listRows },
-          }),
-        });
-      }
-      return new Response("ok", { status: 200 });
-    }
-
-    if (cbData.startsWith("sv:")) {
-      const parts  = cbData.split(":");
-      const postId = parts[1];
-      const listId = parts.slice(2).join(":");
-      const authed = await ctx.runQuery(internal.agentTokens.getByChat, { telegramChatId: cbChatId });
-      if (!authed) return new Response("ok", { status: 200 });
-
-      const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId: authed.userId, postId });
-      if (!post) {
-        await tgSend(botToken, cbChatId, "❌ Post not found\\.");
-        return new Response("ok", { status: 200 });
-      }
-
-      const settings     = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
-      const keywords     = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
-      const stored       = (post as any).matchedKeywords ?? [];
-      const postText     = `${(post as any).title ?? ""} ${post.body}`.toLowerCase();
-      const matchedQuery = stored.length > 0 ? stored.join(", ") : (keywords.find((k: string) => postText.includes(k)) ?? "—");
-
-      await ctx.runMutation(internal.leads.addLeadInternal, {
-        userId:      authed.userId,
-        listId:      listId as any,
-        postId,
-        source:      "reddit_normal",
-        title:       (post as any).title ?? post.body.slice(0, 120),
-        url:         post.url,
-        subreddit:   post.subreddit,
-        author:      post.author,
-        ups:         post.ups,
-        numComments: post.numComments,
-        createdUtc:  post.createdUtc,
-        query:       matchedQuery,
-      });
-
-      await tgSend(botToken, cbChatId, "✅ Post saved to your lead list\\!");
-      return new Response("ok", { status: 200 });
-    }
-
     return new Response("ok", { status: 200 });
   }
 
@@ -253,14 +192,10 @@ export const telegramWebhook = httpAction(async (ctx, request) => {
       return new Response("ok", { status: 200 });
     }
     const user      = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
-    const settings  = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
-    const capLine   = settings?.alertsPerHour
-      ? `🔔 Max alerts/hour: ${settings.alertsPerHour}`
-      : `🔔 Max alerts/hour: Not set\\. Configure it from the website settings\\.`;
     const emailLine = `📧 Email: ${esc(user?.email ?? "—")}`;
     const nameLine  = user?.name ? `👤 Name: ${esc(user.name)}` : null;
     const tgLine    = authed.telegramUsername ? `💬 Telegram: @${esc(authed.telegramUsername)}` : null;
-    const lines     = [emailLine, nameLine, tgLine, capLine].filter(Boolean).join("\n");
+    const lines     = [emailLine, nameLine, tgLine].filter(Boolean).join("\n");
     await tgSend(botToken, chatId, `*Your Account*\n\n${lines}`);
     return new Response("ok", { status: 200 });
   }
@@ -348,110 +283,8 @@ export const sendAlerts = internalAction({
     userId:  v.id("users"),
     postIds: v.array(v.string()),
   },
-  handler: async (ctx, { userId, postIds }) => {
-    const tag = `user=${userId}`;
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    if (!botToken) { console.warn(`[TG]     ${tag} | TELEGRAM_BOT_TOKEN not set`); return; }
-
-    const agentToken = await ctx.runQuery(internal.agentTokens.getByUser, { userId });
-    if (!agentToken?.telegramChatId) { console.log(`[TG]     ${tag} | skipped: no telegramChatId`); return; }
-    if (agentToken.paused) { console.log(`[TG]     ${tag} | skipped: alerts paused`); return; }
-
-    const chatId   = agentToken.telegramChatId;
-    const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
-    const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
-
-    const ONE_HOUR_MS    = 60 * 60 * 1000;
-    const THIRTY_MIN_SEC = 30 * 60;
-    const cap = settings?.alertsPerHour ?? 0;
-    let sentThisRun = 0;
-    if (cap > 0) {
-      const recentCount = await ctx.runQuery(internal.telegram.countRecentAlerts, {
-        userId, platform: "telegram", since: Date.now() - ONE_HOUR_MS,
-      });
-      if (recentCount >= cap) { console.log(`[TG]     ${tag} | skipped: hourly cap ${cap} reached (${recentCount}/${cap})`); return; }
-      sentThisRun = recentCount;
-    }
-
-    console.log(`[TG]     ${tag} | processing ${postIds.length} candidate postIds`);
-    let skippedAlerted = 0, skippedMissing = 0, skippedStale = 0, sent = 0, failed = 0;
-
-    for (const postId of postIds) {
-      if (cap > 0 && sentThisRun >= cap) break;
-      const alerted: boolean = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "telegram" });
-      if (alerted) { skippedAlerted++; continue; }
-
-      // Try the normal table first, then the isolated AI table.
-      const normalPost = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
-      const aiPost = normalPost
-        ? null
-        : await ctx.runQuery(internal.reddit.getAiPostByUserPost, { userId, postId });
-      const post = normalPost ?? aiPost;
-      if (!post) { skippedMissing++; continue; }
-
-      // Skip posts older than 30 minutes (Reddit post age, not fetch time)
-      if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) { skippedStale++; continue; }
-
-      // Compute the matched query. AI posts use matchedIntents (normalized
-      // query strings); normal posts use matchedKeywords with a substring
-      // fallback for rows written before that column existed.
-      let matchedQuery = "—";
-      if (aiPost) {
-        const intents = aiPost.matchedIntents ?? [];
-        if (intents.length > 0) matchedQuery = intents.join(", ");
-      } else if (normalPost) {
-        const stored = normalPost.matchedKeywords ?? [];
-        if (stored.length > 0) {
-          matchedQuery = stored.join(", ");
-        } else {
-          const postText = `${normalPost.title ?? ""} ${normalPost.body}`.toLowerCase();
-          matchedQuery = keywords.find((k) => postText.includes(k)) ?? "—";
-        }
-      }
-
-      // Fetch author karma (best-effort)
-      let karma = "—";
-      try {
-        const proxyBase = process.env.REDDIT_PROXY_URL?.replace(/\/$/, "");
-        const proxyKey  = process.env.REDDIT_PROXY_SECRET;
-        const endpoint  = proxyBase
-          ? `${proxyBase}/user/${encodeURIComponent(post.author)}/about`
-          : `https://www.reddit.com/user/${encodeURIComponent(post.author)}/about.json`;
-        const headers: Record<string, string> = proxyBase && proxyKey
-          ? { "X-Api-Key": proxyKey }
-          : { "User-Agent": "agentk/1.0 (tg-alerts)" };
-        const res = await fetch(endpoint, { headers });
-        if (res.ok) {
-          const json = await res.json();
-          const k = (json?.data?.link_karma ?? 0) + (json?.data?.comment_karma ?? 0);
-          karma = k >= 1000 ? (k / 1000).toFixed(1) + "k" : String(k);
-        }
-      } catch {
-        // use fallback "—"
-      }
-
-      const title = esc(post.title ?? post.body.slice(0, 120));
-      const alertText =
-        `🔥 *${title}*\n\n` +
-        `🔑 Query: \`${esc(matchedQuery)}\`\n` +
-        `📌 r/${esc(post.subreddit)}\n` +
-        `⬆️ ${esc(String(post.ups))} upvotes · 💬 ${esc(String(post.numComments))} comments\n` +
-        `👤 u/${esc(post.author)} · ${esc(karma)} karma`;
-
-      const saveBtn = normalPost
-        ? [{ text: "📋 Save to list", callback_data: `sl:${postId}` }]
-        : undefined;
-      const ok = await tgSend(botToken, chatId, alertText, post.url, saveBtn);
-      if (ok) {
-        await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "telegram" });
-        sentThisRun++;
-        sent++;
-      } else {
-        failed++;
-      }
-    }
-
-    console.log(`[TG]     ${tag} | sent=${sent} failed=${failed} already-alerted=${skippedAlerted} missing-post=${skippedMissing} >30min=${skippedStale}`);
+  handler: async (_ctx, _args) => {
+    // Alert sending removed in v2 — globalFetch handles post matching directly
   },
 });
 

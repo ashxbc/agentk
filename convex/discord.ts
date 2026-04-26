@@ -176,16 +176,11 @@ export const discordWebhook = httpAction(async (ctx, request) => {
 
     if (cmd === "account") {
       if (!authed) return interaction("⚠️ Not connected yet. Use `/start` to connect.", true);
-      const user     = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
-      const settings = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
-      const capText  = settings?.alertsPerHour
-        ? `🔔 **Max alerts/hour:** ${settings.alertsPerHour}`
-        : `🔔 **Max alerts/hour:** Not set. Configure it from the website settings.`;
+      const user  = await ctx.runQuery(internal.users.getUserById, { userId: authed.userId });
       const lines = [
         user?.email ? `📧 **Email:** ${user.email}` : null,
         user?.name  ? `👤 **Name:** ${user.name}`   : null,
         authed.discordUsername ? `💬 **Discord:** @${authed.discordUsername}` : null,
-        capText,
       ].filter(Boolean).join("\n");
       return interaction(`**Your Account**\n\n${lines}`, true);
     }
@@ -207,61 +202,6 @@ export const discordWebhook = httpAction(async (ctx, request) => {
   if (body.type === 3) {
     const customId    = body.data?.custom_id as string;
     const discordUser = (body.member?.user ?? body.user)?.id as string;
-
-    if (customId.startsWith("sl:")) {
-      const postId = customId.slice(3);
-      const authed = await ctx.runQuery(internal.agentTokens.getByDiscordUser, { discordUserId: discordUser });
-      if (!authed) return interaction("⚠️ Not connected. Use `/start` to connect.", true);
-      const lists = await ctx.runQuery(internal.leads.getListsForUser, { userId: authed.userId });
-      if (lists.length === 0) {
-        return interaction("You have no lead lists yet. Create one from the Agentk dashboard first.", true);
-      }
-      const listButtons = lists.slice(0, 5).map((l) => ({
-        type: 2, style: 1, label: l.name.slice(0, 80), custom_id: `sv:${postId}:${l._id}`,
-      }));
-      return new Response(JSON.stringify({
-        type: 4,
-        data: {
-          content: "**📋 Choose a list to save this post:**",
-          flags: 64,
-          components: [{ type: 1, components: listButtons }],
-        },
-      }), { headers: { "Content-Type": "application/json" } });
-    }
-
-    if (customId.startsWith("sv:")) {
-      const parts  = customId.split(":");
-      const postId = parts[1];
-      const listId = parts.slice(2).join(":");
-      const authed = await ctx.runQuery(internal.agentTokens.getByDiscordUser, { discordUserId: discordUser });
-      if (!authed) return interaction("⚠️ Not connected.", true);
-
-      const post = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId: authed.userId, postId });
-      if (!post) return interaction("❌ Post not found.", true);
-
-      const settings     = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId: authed.userId });
-      const keywords     = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
-      const stored       = (post as any).matchedKeywords ?? [];
-      const postText     = `${(post as any).title ?? ""} ${post.body}`.toLowerCase();
-      const matchedQuery = stored.length > 0 ? stored.join(", ") : (keywords.find((k: string) => postText.includes(k)) ?? "—");
-
-      await ctx.runMutation(internal.leads.addLeadInternal, {
-        userId:      authed.userId,
-        listId:      listId as any,
-        postId,
-        source:      "reddit_normal",
-        title:       (post as any).title ?? post.body.slice(0, 120),
-        url:         post.url,
-        subreddit:   post.subreddit,
-        author:      post.author,
-        ups:         post.ups,
-        numComments: post.numComments,
-        createdUtc:  post.createdUtc,
-        query:       matchedQuery,
-      });
-
-      return interaction("✅ Post saved to your lead list!", true);
-    }
 
     return new Response("ok", { status: 200 });
   }
@@ -326,115 +266,7 @@ export const sendDiscordAlerts = internalAction({
     userId:  v.id("users"),
     postIds: v.array(v.string()),
   },
-  handler: async (ctx, { userId, postIds }) => {
-    const tag = `user=${userId}`;
-    const botToken = process.env.DISCORD_BOT_TOKEN;
-    if (!botToken) { console.warn(`[DS]     ${tag} | DISCORD_BOT_TOKEN not set`); return; }
-
-    const agentToken = await ctx.runQuery(internal.agentTokens.getByUser, { userId });
-    if (!agentToken?.discordChannelId) { console.log(`[DS]     ${tag} | skipped: no discordChannelId`); return; }
-    if (agentToken.paused) { console.log(`[DS]     ${tag} | skipped: alerts paused`); return; }
-
-    const channelId = agentToken.discordChannelId;
-    const settings  = await ctx.runQuery(internal.userSettings.getSettingsInternal, { userId });
-    const keywords  = settings?.keywords.map((k) => k.toLowerCase()) ?? [];
-
-    const ONE_HOUR_MS    = 60 * 60 * 1000;
-    const THIRTY_MIN_SEC = 30 * 60;
-    const cap = settings?.alertsPerHour ?? 0;
-    let sentThisRun = 0;
-    if (cap > 0) {
-      const recentCount = await ctx.runQuery(internal.telegram.countRecentAlerts, {
-        userId, platform: "discord", since: Date.now() - ONE_HOUR_MS,
-      });
-      if (recentCount >= cap) { console.log(`[DS]     ${tag} | skipped: hourly cap ${cap} reached (${recentCount}/${cap})`); return; }
-      sentThisRun = recentCount;
-    }
-
-    console.log(`[DS]     ${tag} | processing ${postIds.length} candidate postIds`);
-    let skippedAlerted = 0, skippedMissing = 0, skippedStale = 0, sent = 0, failed = 0;
-
-    for (const postId of postIds) {
-      if (cap > 0 && sentThisRun >= cap) break;
-      const alerted = await ctx.runQuery(internal.telegram.isAlerted, { userId, postId, platform: "discord" });
-      if (alerted) { skippedAlerted++; continue; }
-
-      // Try the normal table first, then the isolated AI table.
-      const normalPost = await ctx.runQuery(internal.reddit.getPostByUserPost, { userId, postId });
-      const aiPost = normalPost
-        ? null
-        : await ctx.runQuery(internal.reddit.getAiPostByUserPost, { userId, postId });
-      const post = normalPost ?? aiPost;
-      if (!post) { skippedMissing++; continue; }
-
-      // Skip posts older than 30 minutes (Reddit post age, not fetch time)
-      if ((Date.now() / 1000) - post.createdUtc > THIRTY_MIN_SEC) { skippedStale++; continue; }
-
-      // Compute the matched query (AI uses matchedIntents; normal uses
-      // matchedKeywords with a substring fallback).
-      let matchedQuery = "—";
-      if (aiPost) {
-        const intents = aiPost.matchedIntents ?? [];
-        if (intents.length > 0) matchedQuery = intents.join(", ");
-      } else if (normalPost) {
-        const stored = normalPost.matchedKeywords ?? [];
-        if (stored.length > 0) {
-          matchedQuery = stored.join(", ");
-        } else {
-          const postText = `${normalPost.title ?? ""} ${normalPost.body}`.toLowerCase();
-          matchedQuery = keywords.find((k) => postText.includes(k)) ?? "—";
-        }
-      }
-      const title = post.title ?? post.body.slice(0, 120);
-
-      // Fetch karma (best-effort)
-      let karmaStr = "—";
-      try {
-        const proxyBase = process.env.REDDIT_PROXY_URL?.replace(/\/$/, "");
-        const proxyKey  = process.env.REDDIT_PROXY_SECRET;
-        const endpoint  = proxyBase
-          ? `${proxyBase}/user/${encodeURIComponent(post.author)}/about`
-          : `https://www.reddit.com/user/${encodeURIComponent(post.author)}/about.json`;
-        const headers: Record<string, string> = proxyBase && proxyKey
-          ? { "X-Api-Key": proxyKey }
-          : { "User-Agent": "agentk/1.0 (discord-alerts)" };
-        const res = await fetch(endpoint, { headers });
-        if (res.ok) {
-          const json = await res.json();
-          const k = (json?.data?.link_karma ?? 0) + (json?.data?.comment_karma ?? 0);
-          karmaStr = k >= 1000 ? (k / 1000).toFixed(1) + "k" : String(k);
-        }
-      } catch { /* fallback */ }
-
-      const embed = {
-        title:     title.slice(0, 256),
-        url:       post.url,
-        fields: [
-          { name: "🔑 Query",     value: `\`${matchedQuery}\``,     inline: true },
-          { name: "📌 Subreddit", value: `r/${post.subreddit}`,     inline: true },
-          { name: "⬆️ Upvotes",   value: String(post.ups),          inline: true },
-          { name: "💬 Comments",  value: String(post.numComments),  inline: true },
-          { name: "👤 Author",    value: `u/${post.author}`,        inline: true },
-          { name: "⭐ Karma",     value: karmaStr,                  inline: true },
-        ],
-        timestamp: new Date(post.createdUtc * 1000).toISOString(),
-        footer:    { text: "Agentk · Reddit Monitor" },
-      };
-
-      const saveComponents = normalPost ? [{
-        type: 1,
-        components: [{ type: 2, style: 2, label: "📋 Save to list", custom_id: `sl:${postId}` }],
-      }] : undefined;
-      const ok = await sendDmMessage(botToken, channelId, undefined, [embed], saveComponents);
-      if (ok) {
-        await ctx.runMutation(internal.telegram.markAlerted, { userId, postId, platform: "discord" });
-        sentThisRun++;
-        sent++;
-      } else {
-        failed++;
-      }
-    }
-
-    console.log(`[DS]     ${tag} | sent=${sent} failed=${failed} already-alerted=${skippedAlerted} missing-post=${skippedMissing} >30min=${skippedStale}`);
+  handler: async (_ctx, _args) => {
+    // Alert sending removed in v2 — globalFetch handles matching directly
   },
 });
