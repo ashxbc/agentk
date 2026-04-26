@@ -6,23 +6,22 @@ import { useRouter } from "next/navigation";
 import { api } from "@/convex/_generated/api";
 import Sidebar, { type ActiveTab } from "@/components/dashboard/Sidebar";
 import RedditFeed from "@/components/dashboard/RedditFeed";
-import LeadsPanel from "@/components/dashboard/LeadsPanel";
 import SettingsPanel from "@/components/dashboard/SettingsPanel";
-import ProductTour from "@/components/dashboard/ProductTour";
+import OnboardingModal from "@/components/dashboard/OnboardingModal";
 import VerificationBadge from "@/components/dashboard/VerificationBadge";
 
-
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("reddit");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("feed");
   const router = useRouter();
 
   const { isAuthenticated, isLoading: authLoading } = useConvexAuth();
-const posts                = useQuery(api.reddit.getResults);
-  const currentUser          = useQuery(api.users.currentUser);
-  const registerDevice       = useMutation(api.devices.registerDevice);
-  const autoVerifyUser       = useMutation(api.emailVerification.autoVerifyUser);
-  const requestVerification  = useMutation(api.emailVerification.requestVerificationEmail);
-  const emailSentRef         = useRef(false);
+  const posts          = useQuery(api.feedPosts.getFeedPosts);
+  const myProfile      = useQuery(api.userProfile.getMyProfile);
+  const currentUser    = useQuery(api.users.currentUser);
+  const registerDevice = useMutation(api.devices.registerDevice);
+  const autoVerifyUser = useMutation(api.emailVerification.autoVerifyUser);
+  const requestVerification = useMutation(api.emailVerification.requestVerificationEmail);
+  const emailSentRef   = useRef(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -37,14 +36,10 @@ const posts                = useQuery(api.reddit.getResults);
         )
         .catch(() => {});
 
-      // Auto-verify Google / existing users; for new email users send the
-      // verification email exactly once per page load.
       if (!emailSentRef.current) {
         emailSentRef.current = true;
         autoVerifyUser().then((wasAutoVerified) => {
-          if (!wasAutoVerified) {
-            requestVerification().catch(() => {});
-          }
+          if (!wasAutoVerified) requestVerification().catch(() => {});
         });
       }
     }
@@ -61,29 +56,29 @@ const posts                = useQuery(api.reddit.getResults);
     );
   }
 
+  // Still loading profile — don't flash the modal prematurely
+  const profileLoading = myProfile === undefined;
+  const needsOnboarding = !profileLoading && (myProfile == null || myProfile.completedAt == null);
+
   return (
     <div style={{ display: "flex", width: "100%", height: "100%" }}>
       <VerificationBadge email={(currentUser as any)?.email} />
       <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
 
       <main style={{ flex: 1, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {/* Reddit feed */}
-        <div style={{ display: activeTab === "reddit" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
+        <div style={{ display: activeTab === "feed" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
           <RedditFeed posts={posts ?? []} loading={posts === undefined} />
         </div>
-
-        {/* Leads */}
-        <div style={{ display: activeTab === "leads" ? "flex" : "none", flex: 1, overflow: "hidden" }}>
-          <LeadsPanel />
-        </div>
-
-        {/* Settings / TG bot */}
         <div style={{ display: activeTab === "settings" ? "flex" : "none", flex: 1, overflow: "hidden", flexDirection: "column" }}>
           <SettingsPanel open={activeTab === "settings"} />
         </div>
       </main>
 
-      {activeTab === "reddit" && <ProductTour />}
+      {needsOnboarding && (
+        <OnboardingModal onComplete={() => {
+          // Convex reactive query will re-fetch profile automatically
+        }} />
+      )}
     </div>
   );
 }
