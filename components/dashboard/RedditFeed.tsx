@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useMemo } from "react";
-import { createPortal } from "react-dom";
-import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useEffect, useLayoutEffect, useRef, useCallback } from "react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import type { Id } from "@/convex/_generated/dataModel";
-
 
 interface Post {
   _id: string;
   postId: string;
-  title?: string;
+  title: string;
   body: string;
   author: string;
   subreddit: string;
@@ -18,7 +15,7 @@ interface Post {
   ups: number;
   numComments: number;
   createdUtc: number;
-  matchedKeywords?: string[];
+  matchedQueries: string[];
 }
 
 interface Props {
@@ -26,16 +23,9 @@ interface Props {
   loading: boolean;
 }
 
-// Scatter positions per card within each band: [leftPct, topPctInBand, rotDeg, zIndex]
 const BAND_SCATTER: [number, number, number, number][] = [
-  [4, 6, -2, 1],
-  [30, 3, 1, 2],
-  [57, 5, -1, 1],
-  [76, 2, 2, 3],
-  [14, 52, 2, 2],
-  [43, 46, -2, 1],
-  [64, 54, 1, 2],
-  [2, 72, -1, 3],
+  [4, 6, -2, 1], [30, 3, 1, 2], [57, 5, -1, 1], [76, 2, 2, 3],
+  [14, 52, 2, 2], [43, 46, -2, 1], [64, 54, 1, 2], [2, 72, -1, 3],
 ];
 const BAND_HEIGHT = 440;
 const BATCH = 8;
@@ -53,851 +43,99 @@ function formatCount(n: number): string {
 }
 
 const SUB_PALETTE = [
-  "#E04444",
-  "#E8612A",
-  "#D4961A",
-  "#3DAA52",
-  "#1A96D4",
-  "#5C6BC0",
-  "#9C27B0",
-  "#E91E73",
-  "#00897B",
-  "#FF5722",
-  "#607D8B",
-  "#8D6E63",
-  "#43A047",
-  "#039BE5",
-  "#F4511E",
-  "#7E57C2",
+  "#E04444","#E8612A","#D4961A","#3DAA52","#1A96D4",
+  "#5C6BC0","#9C27B0","#E91E73","#00897B","#FF5722",
+  "#607D8B","#8D6E63","#43A047","#039BE5","#F4511E","#7E57C2",
 ];
 
 function getSubredditColor(name: string): string {
   let h = 0;
-  for (let i = 0; i < name.length; i++)
-    h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return SUB_PALETTE[h % SUB_PALETTE.length];
 }
 
-// ── Toolbar modal types ───────────────────────────────────────────────────────
-type ModalType = "keywords" | "subreddit" | "metrics" | "ai-intent" | "ai-subreddit" | null;
-
-interface KeywordGroup {
-  name: string;
-  keywords: string[];
-}
-
-// ── Pill helpers ─────────────────────────────────────────────────────────────
-function Pill({
-  label,
-  onRemove,
-  color = "#FF9A8B",
-  textColor = "#462D28",
-}: {
-  label: string;
-  onRemove: () => void;
-  color?: string;
-  textColor?: string;
-}) {
-  return (
-    <span
-      style={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "3px 10px",
-        borderRadius: "9999px",
-        fontSize: "12px",
-        fontWeight: 600,
-        background: color,
-        color: textColor,
-      }}
-    >
-      {label}
-      <button
-        onClick={onRemove}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          lineHeight: 1,
-          opacity: 0.45,
-          display: "flex",
-          alignItems: "center",
-          color: "inherit",
-        }}
-      >
-        <svg
-          viewBox="0 0 10 10"
-          width="8"
-          height="8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        >
-          <path d="M2 2l6 6M8 2L2 8" />
-        </svg>
-      </button>
-    </span>
-  );
-}
-
-// ── Tag box (pill input) ──────────────────────────────────────────────────────
-function TagBox({
-  pills,
-  onAdd,
-  onRemove,
-  placeholder,
-  pillColor,
-  pillTextColor,
-}: {
-  pills: string[];
-  onAdd: (v: string) => void;
-  onRemove: (i: number) => void;
-  placeholder: string;
-  pillColor?: string;
-  pillTextColor?: string;
-}) {
-  const [val, setVal] = useState("");
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: "6px",
-        alignItems: "center",
-        minHeight: "42px",
-        padding: "8px 10px",
-        borderRadius: "10px",
-        border: "1px solid rgba(0,0,0,0.1)",
-        background: "#fff",
-        cursor: "text",
-      }}
-    >
-      {pills.map((p, i) => (
-        <Pill
-          key={p + i}
-          label={p}
-          onRemove={() => onRemove(i)}
-          color={pillColor}
-          textColor={pillTextColor}
-        />
-      ))}
-      <input
-        value={val}
-        onChange={(e) => setVal(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.keyCode === 13) {
-            e.preventDefault();
-            const t = val.trim();
-            if (t) {
-              onAdd(t);
-              setVal("");
-            }
-          }
-        }}
-        onBlur={() => {
-          const t = val.trim();
-          if (t) {
-            onAdd(t);
-            setVal("");
-          }
-        }}
-        placeholder={placeholder}
-        enterKeyHint="done"
-        style={{
-          flex: 1,
-          minWidth: "80px",
-          fontSize: "13px",
-          color: "#191918",
-          background: "transparent",
-          border: "none",
-          outline: "none",
-          fontFamily: "inherit",
-        }}
-      />
-    </div>
-  );
-}
-
-// ── Inline modal ─────────────────────────────────────────────────────────────
-function FeedModal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={{
-        position: "absolute",
-        right: "56px",
-        top: "50%",
-        transform: "translateY(-50%)",
-        width: "272px",
-        background: "#fff",
-        borderRadius: "12px",
-        border: "1px solid rgba(0,0,0,0.08)",
-        padding: "13px 14px 11px",
-        zIndex: 30,
-      }}
-      onClick={(e) => e.stopPropagation()}
-    >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          marginBottom: "10px",
-        }}
-      >
-        <span
-          style={{
-            fontSize: "9px",
-            fontWeight: 800,
-            letterSpacing: ".16em",
-            textTransform: "uppercase",
-            color: "#B2A28C",
-          }}
-        >
-          {title}
-        </span>
-        <button
-          onClick={onClose}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#C8B89A",
-            fontSize: "15px",
-            lineHeight: 1,
-            padding: 0,
-          }}
-        >
-          ×
-        </button>
-      </div>
-      {children}
-    </div>
-  );
-}
-
-// ── Sub-autocomplete ──────────────────────────────────────────────────────────
-function SubredditInput({
-  value,
-  onChange,
-  onAdd,
-  disabled,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  onAdd: (v: string) => void;
-  disabled?: boolean;
-}) {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const searchSubs = useAction(api.reddit.searchSubreddits);
-
-  useEffect(() => {
-    if (value.length < 2) {
-      setSuggestions([]);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setSuggestions([]);
-
-    let cancelled = false;
-    const timer = setTimeout(async () => {
-      try {
-        const results = await searchSubs({ query: value });
-        if (!cancelled) { setSuggestions(results); setLoading(false); }
-      } catch {
-        if (!cancelled) { setSuggestions([]); setLoading(false); }
-      }
-    }, 300);
-    return () => { cancelled = true; clearTimeout(timer); };
-  }, [value]);
-
-  const showDrop = value.length >= 2 && (loading || suggestions.length > 0);
-  const getRect = () => containerRef.current?.getBoundingClientRect() ?? null;
-
-  const dropNode =
-    showDrop && typeof window !== "undefined"
-      ? createPortal(
-          (() => {
-            const r = getRect();
-            if (!r) return null;
-            return (
-              <div
-                style={{
-                  position: "fixed",
-                  top: r.bottom + 4,
-                  left: r.left,
-                  width: r.width,
-                  zIndex: 9999,
-                  background: "#fff",
-                  border: "1px solid rgba(0,0,0,0.08)",
-                  borderRadius: "8px",
-                  overflow: "hidden",
-                }}
-              >
-                {loading
-                  ? [1, 2, 3].map((i) => (
-                      <div
-                        key={i}
-                        style={{
-                          padding: "8px 12px",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "8px",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: "22px",
-                            height: "12px",
-                            borderRadius: "4px",
-                            background: "linear-gradient(90deg,#f0ece6 25%,#e8e2da 50%,#f0ece6 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: "skeleton-shimmer 1.2s infinite",
-                          }}
-                        />
-                        <div
-                          style={{
-                            width: `${50 + i * 18}px`,
-                            height: "12px",
-                            borderRadius: "4px",
-                            background: "linear-gradient(90deg,#f0ece6 25%,#e8e2da 50%,#f0ece6 75%)",
-                            backgroundSize: "200% 100%",
-                            animation: `skeleton-shimmer 1.2s ${i * 0.1}s infinite`,
-                          }}
-                        />
-                      </div>
-                    ))
-                  : suggestions.map((s) => (
-                      <div
-                        key={s}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          onAdd(s);
-                          setSuggestions([]);
-                          setLoading(false);
-                        }}
-                        style={{
-                          padding: "8px 12px",
-                          fontSize: "13px",
-                          color: "#191918",
-                          cursor: "pointer",
-                        }}
-                        onMouseEnter={(e) =>
-                          (e.currentTarget.style.background = "#FDF7EF")
-                        }
-                        onMouseLeave={(e) =>
-                          (e.currentTarget.style.background = "#fff")
-                        }
-                      >
-                        r/{s}
-                      </div>
-                    ))}
-              </div>
-            );
-          })(),
-          document.body,
-        )
-      : null;
-
-  return (
-    <div ref={containerRef}>
-      <div style={{ display: "flex", gap: "8px", marginBottom: "8px" }}>
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            alignItems: "center",
-            height: "38px",
-            padding: "0 10px",
-            borderRadius: "9px",
-            border: "1px solid rgba(0,0,0,0.1)",
-            background: "#fff",
-          }}
-        >
-          <span
-            style={{
-              fontSize: "12px",
-              color: "#C4B9AA",
-              userSelect: "none",
-              marginRight: "3px",
-            }}
-          >
-            r/
-          </span>
-          <input
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                onAdd(value);
-                setSuggestions([]);
-              }
-            }}
-            disabled={disabled}
-            placeholder="startup"
-            style={{
-              flex: 1,
-              fontSize: "13px",
-              color: "#191918",
-              background: "transparent",
-              border: "none",
-              outline: "none",
-              fontFamily: "inherit",
-            }}
-          />
-        </div>
-        <button
-          onClick={() => {
-            onAdd(value);
-            setSuggestions([]);
-          }}
-          disabled={disabled}
-          style={{
-            height: "38px",
-            padding: "0 10px",
-            border: "none",
-            background: "none",
-            cursor: "pointer",
-            fontSize: "12px",
-            fontWeight: 600,
-            color: "#B2A28C",
-            fontFamily: "inherit",
-          }}
-        >
-          Add
-        </button>
-      </div>
-      {dropNode}
-    </div>
-  );
-}
-
-// ── Stepper ──────────────────────────────────────────────────────────────────
-function Stepper({
-  value,
-  onChange,
-  label,
-  step = 10,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-  label: string;
-  step?: number;
-}) {
-  const fmt = (v: number) =>
-    v === 0 ? "Any" : v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v);
-  return (
-    <div
-      style={{ display: "flex", flexDirection: "column", alignItems: "center" }}
-    >
-      <span
-        style={{
-          fontSize: "10px",
-          fontWeight: 600,
-          color: "#62584F",
-          marginBottom: "5px",
-        }}
-      >
-        {label}
-      </span>
-      <div
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          borderRadius: "10px",
-          border: "1px solid rgba(0,0,0,0.1)",
-          overflow: "hidden",
-        }}
-      >
-        <button
-          onClick={() => onChange(Math.max(0, value - step))}
-          style={{
-            width: "32px",
-            height: "36px",
-            border: "none",
-            background: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#B2A28C",
-            fontFamily: "inherit",
-          }}
-        >
-          −
-        </button>
-        <span
-          style={{
-            padding: "0 12px",
-            fontSize: "13px",
-            fontWeight: 600,
-            color: "#191918",
-            borderLeft: "1px solid rgba(0,0,0,0.08)",
-            borderRight: "1px solid rgba(0,0,0,0.08)",
-            minWidth: "54px",
-            textAlign: "center",
-            lineHeight: "36px",
-          }}
-        >
-          {fmt(value)}
-        </span>
-        <button
-          onClick={() => onChange(value + step)}
-          style={{
-            width: "32px",
-            height: "36px",
-            border: "none",
-            background: "none",
-            cursor: "pointer",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            color: "#B2A28C",
-            fontFamily: "inherit",
-          }}
-        >
-          +
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Main component ────────────────────────────────────────────────────────────
 export default function RedditFeed({ posts, loading }: Props) {
-  const { isAuthenticated } = useConvexAuth();
-  const settings = useQuery(api.userSettings.getUserSettings);
-  const upsertSettings = useMutation(api.userSettings.upsertUserSettings);
+  const canvasRef   = useRef<HTMLDivElement>(null);
+  const innerRef    = useRef<HTMLDivElement | null>(null);
+  const tooltipRef  = useRef<HTMLDivElement | null>(null);
+  const offset      = useRef(0);
+  const renderGen   = useRef(0);
+  const karmaCache  = useRef(new Map<string, string>());
 
-  // Local copies of settings for modals
-  const [keywordGroups, setKeywordGroups] = useState<KeywordGroup[]>([{ name: "General", keywords: [] }]);
-  const [activeGroupIdx, setActiveGroupIdx] = useState(0);
-  const [editingGroupIdx, setEditingGroupIdx] = useState<number | null>(null);
-  const [editingGroupName, setEditingGroupName] = useState("");
-  const [excluded, setExcluded] = useState<string[]>([]);
-  const [subreddits, setSubreddits] = useState<string[]>([]);
-  const [minUpvotes, setMinUpvotes] = useState(0);
-  const [minComments, setMinComments] = useState(0);
-  const [minKarma, setMinKarma] = useState(0);
-  const [subInput, setSubInput] = useState("");
-  const [loaded, setLoaded]     = useState(false);
+  const fetchKarma = useAction(api.reddit.fetchKarma);
+  const fetchKarmaRef = useRef(fetchKarma);
+  useEffect(() => { fetchKarmaRef.current = fetchKarma; }, [fetchKarma]);
 
-  // Keywords from the currently active group only
-  const keywords = keywordGroups[activeGroupIdx]?.keywords ?? [];
-
-  // AI mode state
-  const [feedMode, setFeedMode]           = useState<"normal" | "ai">("normal");
-  const [aiIntents, setAiIntents]         = useState<string[]>(["", "", ""]);
-  const [aiSubreddits, setAiSubreddits]   = useState<string[]>([]);
-  const [aiSubInput, setAiSubInput]       = useState("");
-  const [intentListMapLocal, setIntentListMapLocal] = useState<Array<{ intent: string; listId: string }>>([]);
-  const [intentPickerIdx, setIntentPickerIdx]       = useState<number | null>(null);
-  const aiSettings                        = useQuery(api.aiFilter.getAiSettings);
-  const setAiSettingsMutation             = useMutation(api.aiFilter.setAiSettings);
-  const setIntentListMapMutation          = useMutation(api.aiFilter.setIntentListMap);
-  // Always subscribe (not gated on feedMode) so the data is pre-warmed.
-  // No subreddit arg — server returns all AI candidates for this user; the
-  // client intersects with matchedPostIds. This keeps matched posts visible
-  // even when the user edits subreddits mid-cycle (change takes effect only
-  // at the next globalFetch).
-  const aiCandidatePosts                = useQuery(api.aiFilter.getAiCandidatePosts, {});
-
-  // ── Leads (normal-mode manual save) ──────────────────────────────────────
-  const leadLists       = useQuery(api.leads.getLists);
-  const savedIdsData    = useQuery(api.leads.getSavedPostIds);
-  const createLeadList  = useMutation(api.leads.createList);
-  const addLeadMutation = useMutation(api.leads.addLead);
-  const [toastKey, setToastKey] = useState(0);
-  const [listPickerPost, setListPickerPost] = useState<Post | null>(null);
-
-  // Derived Set from the server query. Undefined until the query resolves;
-  // an empty Set while unresolved is fine — cards render unsaved, then flip
-  // once the query lands (canvas re-renders via the effect dep below).
-  const savedPostIds = useMemo(
-    () => new Set<string>(savedIdsData ?? []),
-    [savedIdsData],
-  );
-
-  // Refs so DOM event handlers always see the latest values
-  const leadListsRef    = useRef(leadLists);
-  leadListsRef.current  = leadLists;
-  const savedPostIdsRef = useRef(savedPostIds);
-  savedPostIdsRef.current = savedPostIds;
-
-  const handleAddLead = useCallback(async (p: Post) => {
-    if (savedPostIdsRef.current.has(p.postId)) return;
-    // Resolve the target list: first existing list, otherwise auto-create "Inbox".
-    let targetListId = leadListsRef.current?.[0]?._id ?? null;
-    if (!targetListId) {
-      targetListId = await createLeadList({ name: "Inbox" });
-    }
-    if (!targetListId) return;
-    await addLeadMutation({
-      listId:      targetListId,
-      postId:      p.postId,
-      source:      "normal",
-      title:       p.title ?? p.body.slice(0, 200),
-      url:         p.url,
-      subreddit:   p.subreddit,
-      author:      p.author,
-      ups:         p.ups,
-      numComments: p.numComments,
-      createdUtc:  p.createdUtc,
-      query:       (p.matchedKeywords ?? []).join(", "),
-    });
-    // No local state: the savedPostIds query re-runs reactively after the
-    // mutation and the canvas redraw effect below picks it up.
-    setToastKey((k) => k + 1);
-  }, [createLeadList, addLeadMutation]);
-
-  const handleAddLeadRef = useRef(handleAddLead);
-  handleAddLeadRef.current = handleAddLead;
-  const setListPickerPostRef = useRef(setListPickerPost);
-  setListPickerPostRef.current = setListPickerPost;
-
-  const [activeModal, setActiveModal] = useState<ModalType>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const innerRef = useRef<HTMLDivElement>(null);
-  const renderGen = useRef(0);
-  const offset = useRef(0);
-  const karmaCache = useRef<Map<string, string>>(new Map());
-  const tooltipRef = useRef<HTMLDivElement | null>(null);
-  const fetchKarmaAction = useAction(api.reddit.fetchKarma);
-  const fetchKarmaRef = useRef(fetchKarmaAction);
-  fetchKarmaRef.current = fetchKarmaAction;
-
-  // Global karma tooltip div mounted on body
+  // Create tooltip div once
   useEffect(() => {
-    if (!document.getElementById("kf-spin-style")) {
-      const s = document.createElement("style");
-      s.id = "kf-spin-style";
-      s.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
-      document.head.appendChild(s);
-    }
-    const div = document.createElement("div");
-    div.style.cssText =
-      "position:fixed;z-index:99999;background:#fff;color:#191918;font-size:10px;font-weight:700;padding:5px 10px;border-radius:10px;pointer-events:none;display:none;white-space:nowrap;border:1px solid rgba(0,0,0,0.09)";
-    document.body.appendChild(div);
-    tooltipRef.current = div;
-    return () => {
-      div.remove();
-      tooltipRef.current = null;
-    };
+    const tip = document.createElement("div");
+    tip.style.cssText = "position:fixed;display:none;background:#191918;color:#fff;padding:5px 10px;border-radius:8px;font-size:11px;font-weight:600;pointer-events:none;z-index:999;white-space:nowrap;font-family:Inter,sans-serif";
+    document.body.appendChild(tip);
+    tooltipRef.current = tip;
+    const style = document.createElement("style");
+    style.textContent = "@keyframes spin{to{transform:rotate(360deg)}}";
+    document.head.appendChild(style);
+    return () => { tip.remove(); style.remove(); };
   }, []);
 
-  // Populate from Convex settings
-  if (settings && !loaded) {
-    const stored = settings.keywordGroups;
-    if (stored && stored.length > 0) {
-      setKeywordGroups(stored);
-    } else if (settings.keywords.length > 0) {
-      setKeywordGroups([{ name: "General", keywords: settings.keywords }]);
-    }
-    if (settings.activeGroupIdx !== undefined) {
-      setActiveGroupIdx(settings.activeGroupIdx);
-    }
-    setExcluded(settings.excluded);
-    setSubreddits(settings.subreddits);
-    setMinUpvotes(settings.minUpvotes);
-    setMinComments(settings.minComments);
-    if (settings.minKarma !== undefined) setMinKarma(settings.minKarma);
-    setLoaded(true);
-  }
+  const appendBatch = useCallback((gen: number) => {
+    const inner = innerRef.current;
+    if (!inner || gen !== renderGen.current) return;
 
-  useEffect(() => {
-    if (!aiSettings) return;
-    const loaded = aiSettings.intents.length > 0
-      ? [...aiSettings.intents, "", "", ""].slice(0, 3)
-      : ["", "", ""];
-    setAiIntents(loaded);
-    setAiSubreddits(aiSettings.subreddits);
-    setIntentListMapLocal(aiSettings.intentListMap ?? []);
-  }, [aiSettings]);
+    const batch = posts.slice(offset.current, offset.current + BATCH);
+    if (batch.length === 0) return;
 
-  // Clear toast via timer so tab-switching mid-animation doesn't cause replay.
-  useEffect(() => {
-    if (toastKey === 0) return;
-    const id = setTimeout(() => setToastKey(0), 1700);
-    return () => clearTimeout(id);
-  }, [toastKey]);
+    const bandIdx  = Math.floor(offset.current / BAND_SCATTER.length);
+    const bandTop  = bandIdx * BAND_HEIGHT;
 
-  // Autopilot: whenever AI matched posts update, auto-save any that belong to
-  // an intent that has a target list configured.
-  useEffect(() => {
-    const matches = aiSettings?.matchedPosts;
-    if (!matches?.length || !intentListMapLocal.length || !aiCandidatePosts) return;
-    const mapIndex = new Map(intentListMapLocal.map((e) => [e.intent, e.listId]));
-    for (const match of matches) {
-      const listId = mapIndex.get(match.intent);
-      if (!listId) continue;
-      if (savedPostIdsRef.current.has(match.postId)) continue;
-      const post = aiCandidatePosts.find((p) => p.postId === match.postId);
-      if (!post) continue;
-      addLeadMutation({
-        listId: listId as Id<"leadLists">,
-        postId: post.postId,
-        source: "ai",
-        title: post.title ?? post.body.slice(0, 200),
-        url: post.url,
-        subreddit: post.subreddit,
-        author: post.author,
-        ups: post.ups,
-        numComments: post.numComments,
-        createdUtc: post.createdUtc,
-        query: match.intent,
-      }).catch(() => {});
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [aiSettings?.matchedPosts, intentListMapLocal]);
+    batch.forEach((p, i) => {
+      const slotIdx = (offset.current + i) % BAND_SCATTER.length;
+      const [leftPct, topPctInBand, rotDeg, zIdx] = BAND_SCATTER[slotIdx];
 
-  async function saveAiSettings(intents: string[], subs: string[]) {
-    const clean = intents.filter(Boolean);
-    console.log("[AI] settings saved | intents:", clean, "| subreddits:", subs);
-    await setAiSettingsMutation({ intents: clean, subreddits: subs });
-  }
+      const card = document.createElement("a");
+      card.href   = p.url;
+      card.target = "_blank";
+      card.rel    = "noopener noreferrer";
 
-  async function saveSettings(patch: {
-    keywordGroups?: KeywordGroup[];
-    activeGroupIdx?: number;
-    excluded?: string[];
-    subreddits?: string[];
-    minUpvotes?: number;
-    minComments?: number;
-    minKarma?: number;
-  }) {
-    if (!isAuthenticated) return;
-    const groups  = patch.keywordGroups ?? keywordGroups;
-    const groupIdx = patch.activeGroupIdx ?? activeGroupIdx;
-    const merged = {
-      keywords: groups[groupIdx]?.keywords ?? [],
-      keywordGroups: groups,
-      activeGroupIdx: groupIdx,
-      excluded: patch.excluded ?? excluded,
-      subreddits: patch.subreddits ?? subreddits,
-      minUpvotes: patch.minUpvotes ?? minUpvotes,
-      minComments: patch.minComments ?? minComments,
-      minKarma: patch.minKarma ?? minKarma,
-    };
-    await upsertSettings(merged);
-  }
+      const topPx = bandTop + (topPctInBand / 100) * BAND_HEIGHT;
+      card.style.cssText = `
+        position:absolute;
+        left:${leftPct}%;
+        top:${topPx}px;
+        width:220px;
+        background:#fff;
+        border-radius:16px;
+        border:1px solid rgba(0,0,0,0.06);
+        box-shadow:0 2px 12px rgba(0,0,0,0.05);
+        overflow:hidden;
+        text-decoration:none;
+        cursor:pointer;
+        transform:rotate(${rotDeg}deg);
+        z-index:${zIdx};
+        transition:box-shadow 0.2s,transform 0.2s;
+      `;
+      card.onmouseenter = () => {
+        card.style.boxShadow = "0 8px 32px rgba(0,0,0,0.12)";
+        card.style.transform = `rotate(${rotDeg}deg) translateY(-2px)`;
+      };
+      card.onmouseleave = () => {
+        card.style.boxShadow = "0 2px 12px rgba(0,0,0,0.05)";
+        card.style.transform = `rotate(${rotDeg}deg)`;
+      };
 
-  const displayPosts = useMemo(() => {
-    if (feedMode === "ai") {
-      // Strict: never fall back to normal-mode posts. If any AI dependency is
-      // unloaded, return []. Normal posts must never render under AI mode.
-      if (aiCandidatePosts === undefined || aiSettings === undefined) return [];
-      // Build the live intent allow-list from the toolbar state. Normalize
-      // (trim / collapse whitespace / lowercase) to match how the backend
-      // stores the intent key on each match entry.
-      const activeIntents = new Set(
-        (aiSettings?.intents ?? [])
-          .map((s) => s.trim().replace(/\s+/g, " ").toLowerCase())
-          .filter(Boolean),
-      );
-      // Posts are included only if at least one of their matching intents is
-      // still present in the toolbar. Removing an intent instantly hides its
-      // posts. matchedPosts is authoritative; legacy matchedPostIds is ignored.
-      const liveMatches = (aiSettings?.matchedPosts ?? []).filter((e) =>
-        activeIntents.has(e.intent),
-      );
-      const matchedIds = new Set(liveMatches.map((e) => e.postId));
-      // Sort newest → oldest so the top of the canvas is the freshest post,
-      // matching the normal feed's order.
-      return aiCandidatePosts
-        .filter((p) => matchedIds.has(p.postId))
-        .sort((a, b) => b.createdUtc - a.createdUtc);
-    }
-    return posts;
-  }, [feedMode, aiCandidatePosts, aiSettings, posts]);
+      const subColor = getSubredditColor(p.subreddit);
+      const title    = p.title || p.body.slice(0, 120);
 
-  // ── Scattered canvas rendering ────────────────────────────────────────────
-  const appendBatch = useCallback(
-    (gen: number) => {
-      const inner = innerRef.current;
-      if (!inner || gen !== renderGen.current) return;
-
-      const batch = displayPosts.slice(offset.current, offset.current + BATCH);
-      if (!batch.length) return;
-
-      const batchIndex = offset.current / BATCH;
-      const bandTop = batchIndex * BAND_HEIGHT + 50;
-
-      batch.forEach((p, i) => {
-        const [lp, tp, rot, z] = BAND_SCATTER[i] ?? [
-          Math.random() * 65,
-          Math.random() * 70,
-          0,
-          1,
-        ];
-        const topPx = bandTop + (tp / 100) * BAND_HEIGHT;
-
-        const card = document.createElement("a");
-        card.href = p.url;
-        card.target = "_blank";
-        card.rel = "noopener noreferrer";
-        card.style.cssText = [
-          `position:absolute`,
-          `width:265px`,
-          `left:${lp}%`,
-          `top:${topPx}px`,
-          `z-index:${z}`,
-          `background:#fff`,
-          `border-radius:12px`,
-          `border:1px solid rgba(0,0,0,0.08)`,
-          `overflow:hidden`,
-          `cursor:pointer`,
-          `text-decoration:none`,
-          `display:flex`,
-          `flex-direction:column`,
-          `--tx:0px`,
-          `--ty:0px`,
-          `--rot:${rot}deg`,
-          `transform:translate(0,0) rotate(${rot}deg)`,
-          `transition:transform .2s cubic-bezier(0.34,1.56,0.64,1)`,
-        ].join(";");
-
-        card.addEventListener("mouseenter", () => {
-          card.style.transform = `translate(0,0) rotate(${rot}deg) scale(1.04)`;
-          card.style.zIndex = "10";
-        });
-        card.addEventListener("mouseleave", () => {
-          card.style.transform = `translate(0,0) rotate(${rot}deg) scale(1)`;
-          card.style.zIndex = String(z);
-        });
-
-        const title = p.title || p.body.slice(0, 120);
-        const subColor = getSubredditColor(p.subreddit);
-        // Save-to-Leads bookmark icon — normal mode only, bottom-right corner.
-        // Pre-saved state reflects if this postId is already in our session's
-        // savedPostIds set.
-        const alreadySaved = feedMode === "normal" && savedPostIdsRef.current.has(p.postId);
-        const saveBtnHTML = feedMode === "normal" ? `
-        <div class="kf-save" role="button" aria-label="Add to leads" style="position:absolute;bottom:7px;right:8px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;z-index:3;color:${alreadySaved ? "#DF849D" : "#B2A28C"};transition:color .15s ease, background .15s ease">
-          <svg viewBox="0 0 24 24" width="13" height="13" fill="${alreadySaved ? "#DF849D" : "none"}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-        </div>` : "";
-        card.innerHTML = `${saveBtnHTML}
-        <div class="kf" style="position:absolute;top:9px;right:9px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;border-radius:6px;cursor:default;z-index:2">
-          <svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C9 7 7 10 7 14a5 5 0 0010 0c0-2.5-1.5-5-2.5-6 0 2-1 3.5-2.5 3.5S9.5 10 12 2z" fill="#FF6B35"/></svg>
+      card.innerHTML = `
+        <div style="background:${subColor}14;padding:8px 10px;border-bottom:1px solid rgba(0,0,0,0.04)">
+          <span style="font-size:10px;font-weight:700;color:${subColor};letter-spacing:.02em">r/${p.subreddit}</span>
         </div>
-        <div style="flex:1;min-width:0;padding:12px 35px 10px 12px">
-          <div style="font-size:9.5px;color:#878a8c;margin-bottom:6px;display:flex;align-items:center;gap:4px">
-            <span style="display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border-radius:50%;background:${subColor};flex-shrink:0"><svg viewBox="0 0 20 20" width="12" height="12" xmlns="http://www.w3.org/2000/svg" fill="white"><path d="M16.67 10a1.46 1.46 0 00-2.47-1 7.12 7.12 0 00-3.85-1.23l.65-3.07 2.13.45a1 1 0 101.07-1 1 1 0 00-.96.68l-2.38-.5a.22.22 0 00-.26.16l-.73 3.44a7.14 7.14 0 00-3.89 1.23 1.46 1.46 0 10-1.61 2.39 2.87 2.87 0 000 .44c0 2.24 2.61 4.06 5.83 4.06s5.83-1.82 5.83-4.06a2.87 2.87 0 000-.44 1.46 1.46 0 00.55-1.55zM8 11a1 1 0 111 1 1 1 0 01-1-1zm5.37 2.71a3.39 3.39 0 01-2.37.63 3.39 3.39 0 01-2.37-.63.22.22 0 01.31-.31 2.93 2.93 0 002.06.47 2.93 2.93 0 002.06-.47.22.22 0 01.31.31zM13 12a1 1 0 111-1 1 1 0 01-1 1z"/></svg></span>
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1"><b style="color:#1c1c1c;font-weight:700">r/${p.subreddit}</b> · u/${p.author} · ${formatAge(p.createdUtc)}</span>
+        <div style="padding:10px">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:7px">
+            <button class="kf" style="background:none;border:none;cursor:pointer;padding:3px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="#B2A28C" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+            </button>
+            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1;font-size:11px;color:#B2A28C">u/${p.author} · ${formatAge(p.createdUtc)}</span>
           </div>
           <div style="font-size:12.5px;font-weight:600;color:#1c1c1c;line-height:1.45;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden">
             ${title.replace(/</g, "&lt;")}
@@ -913,131 +151,74 @@ export default function RedditFeed({ posts, loading }: Props) {
             <svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
             ${formatCount(p.numComments)}
           </div>
-        </div>`;
+        </div>
+      `;
 
-        const fireEl = card.querySelector<HTMLElement>(".kf");
-        if (fireEl) {
-          fireEl.addEventListener("click", (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-          });
-          fireEl.addEventListener("mouseenter", async () => {
-            const tip = tooltipRef.current;
-            if (!tip) return;
-            fireEl.style.background = "rgba(0,0,0,0.06)";
-            const uname = p.author;
-            const cached = karmaCache.current.get(uname);
-            const show = (text: string) => {
-              const rect = fireEl.getBoundingClientRect();
-              tip.textContent = text;
-              tip.style.left = `${rect.right + 13}px`;
-              tip.style.top = `${rect.top - 8}px`;
-              tip.style.transform = "none";
-              tip.style.display = "block";
-            };
-            if (cached !== undefined) {
-              show(cached);
-            } else {
-              // Show spinner while fetching
-              const rect = fireEl.getBoundingClientRect();
-              tip.innerHTML = `<svg style="animation:spin .6s linear infinite;display:inline-block;vertical-align:middle" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
-              tip.style.left = `${rect.right + 13}px`;
-              tip.style.top = `${rect.top - 8}px`;
-              tip.style.transform = "none";
-              tip.style.display = "block";
-              try {
-                const karma = await fetchKarmaRef.current({ author: uname });
-                const kStr = karma != null ? formatCount(karma) + " karma" : "—";
-                karmaCache.current.set(uname, kStr);
-                if (fireEl.matches(":hover")) show(kStr);
-              } catch {
-                karmaCache.current.set(uname, "—");
-                if (fireEl.matches(":hover")) show("—");
-              }
-            }
-          });
-          fireEl.addEventListener("mouseleave", () => {
-            fireEl.style.background = "";
-            const tip = tooltipRef.current;
-            if (tip) tip.style.display = "none";
-          });
-        }
-
-        // Save-to-Leads click handler (normal mode only). The card itself is
-        // an <a> so we must stop propagation to prevent the reddit link
-        // from opening on click.
-        const saveEl = card.querySelector<HTMLElement>(".kf-save");
-        if (saveEl) {
-          saveEl.addEventListener("mouseenter", () => {
-            if (saveEl.dataset.saved !== "true") {
-              saveEl.style.background = "rgba(0,0,0,0.06)";
-              saveEl.style.color = "#62584F";
-            }
-          });
-          saveEl.addEventListener("mouseleave", () => {
-            saveEl.style.background = "";
-            if (saveEl.dataset.saved !== "true") saveEl.style.color = "#B2A28C";
-          });
-          saveEl.addEventListener("click", async (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            if (saveEl.dataset.saved === "true") return;
-            // Multi-list: open picker without eager button flip; Convex reactive
-            // update will flip the bookmark once the mutation completes.
-            const lists = leadListsRef.current ?? [];
-            if (lists.length > 1 && !savedPostIdsRef.current.has(p.postId)) {
-              setListPickerPostRef.current(p);
-              return;
-            }
-            saveEl.dataset.saved = "true";
-            // Flip to filled + accent immediately so the click feels responsive.
-            saveEl.style.color = "#DF849D";
-            saveEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="#DF849D" stroke="#DF849D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+      // Karma tooltip
+      const fireEl = card.querySelector<HTMLElement>(".kf");
+      if (fireEl) {
+        fireEl.addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); });
+        fireEl.addEventListener("mouseenter", async () => {
+          const tip = tooltipRef.current;
+          if (!tip) return;
+          fireEl.style.background = "rgba(0,0,0,0.06)";
+          const uname = p.author;
+          const cached = karmaCache.current.get(uname);
+          const show = (text: string) => {
+            const rect = fireEl.getBoundingClientRect();
+            tip.textContent = text;
+            tip.style.left = `${rect.right + 13}px`;
+            tip.style.top = `${rect.top - 8}px`;
+            tip.style.display = "block";
+          };
+          if (cached !== undefined) {
+            show(cached);
+          } else {
+            tip.innerHTML = `<svg style="animation:spin .6s linear infinite;display:inline-block;vertical-align:middle" viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+            const rect = fireEl.getBoundingClientRect();
+            tip.style.left = `${rect.right + 13}px`;
+            tip.style.top = `${rect.top - 8}px`;
+            tip.style.display = "block";
             try {
-              await handleAddLeadRef.current(p);
+              const karma = await fetchKarmaRef.current({ author: uname });
+              const kStr = karma != null ? formatCount(karma) + " karma" : "—";
+              karmaCache.current.set(uname, kStr);
+              if (fireEl.matches(":hover")) show(kStr);
             } catch {
-              // Revert on failure.
-              saveEl.dataset.saved = "false";
-              saveEl.style.color = "#B2A28C";
-              saveEl.innerHTML = `<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>`;
+              karmaCache.current.set(uname, "—");
+              if (fireEl.matches(":hover")) show("—");
             }
-          });
-        }
-
-        inner.appendChild(card);
-      });
-
-      offset.current += batch.length;
-      inner.style.height = `${bandTop + BAND_HEIGHT + 60}px`;
-
-      // Remove old sentinel
-      inner.querySelector(".reddit-sentinel")?.remove();
-
-      if (offset.current < displayPosts.length) {
-        const sentinel = document.createElement("div");
-        sentinel.className = "reddit-sentinel";
-        sentinel.style.cssText =
-          "position:absolute;left:50%;bottom:0;transform:translateX(-50%);padding:16px;";
-        sentinel.innerHTML = `<svg style="animation:spin .5s linear infinite;display:inline-block" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#DF849D" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
-        inner.appendChild(sentinel);
-
-        const obs = new IntersectionObserver(
-          (entries) => {
-            if (entries[0].isIntersecting) {
-              obs.disconnect();
-              appendBatch(gen);
-            }
-          },
-          { root: canvasRef.current, threshold: 0.1 },
-        );
-        obs.observe(sentinel);
+          }
+        });
+        fireEl.addEventListener("mouseleave", () => {
+          fireEl.style.background = "";
+          const tip = tooltipRef.current;
+          if (tip) tip.style.display = "none";
+        });
       }
-    },
-    [displayPosts],
-  );
 
-  // Clear canvas synchronously before paint whenever mode OR posts change.
-  // useLayoutEffect prevents a flash of stale DOM from the previous mode.
+      inner.appendChild(card);
+    });
+
+    offset.current += batch.length;
+    const bandCount = Math.ceil(offset.current / BAND_SCATTER.length);
+    inner.style.height = `${bandCount * BAND_HEIGHT + 60}px`;
+
+    inner.querySelector(".reddit-sentinel")?.remove();
+
+    if (offset.current < posts.length) {
+      const sentinel = document.createElement("div");
+      sentinel.className = "reddit-sentinel";
+      sentinel.style.cssText = "position:absolute;left:50%;bottom:0;transform:translateX(-50%);padding:16px;";
+      sentinel.innerHTML = `<svg style="animation:spin .5s linear infinite;display:inline-block" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#DF849D" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>`;
+      inner.appendChild(sentinel);
+      const obs = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) { obs.disconnect(); appendBatch(gen); }
+      }, { root: canvasRef.current, threshold: 0.1 });
+      obs.observe(sentinel);
+    }
+  }, [posts]);
+
   useLayoutEffect(() => {
     const inner = innerRef.current;
     if (!inner) return;
@@ -1045,927 +226,37 @@ export default function RedditFeed({ posts, loading }: Props) {
     offset.current = 0;
     inner.innerHTML = "";
     inner.style.height = "0";
-    if (displayPosts.length > 0) appendBatch(renderGen.current);
-    // savedPostIds is read via ref inside appendBatch; including it here
-    // guarantees a canvas redraw when leads are added/removed so each
-    // card's bookmark icon reflects the true server state.
-  }, [feedMode, displayPosts, appendBatch, savedPostIds]);
-
-  const hasKeywords    = keywords.length > 0;
-  const hasSubreddits  = subreddits.length > 0;
+    if (posts.length > 0) appendBatch(renderGen.current);
+  }, [posts, appendBatch]);
 
   return (
-    <div
-      style={{
-        flex: 1,
-        position: "relative",
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      {/* Spin + lead-toast keyframes */}
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes kf-toast-pop {
-          0%   { opacity: 0; transform: translate(-50%, calc(-50% + 8px)) scale(0.96); }
-          12%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          78%  { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, calc(-50% - 6px)) scale(0.98); }
-        }
-      `}</style>
-
-      {/* "Lead added" toast — centered over the feed, fade in/out once per
-          save. We unmount after the animation ends so tab-switches (which
-          toggle display:none on the parent) can't restart the animation. */}
-      {toastKey > 0 && (
-        <div
-          key={toastKey}
-          onAnimationEnd={() => setToastKey(0)}
-          style={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            zIndex: 40,
-            pointerEvents: "none",
-            animation: "kf-toast-pop 1.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
-            background: "rgba(255,255,255,0.92)",
-            backdropFilter: "blur(10px)",
-            WebkitBackdropFilter: "blur(10px)",
-            border: "1px solid rgba(0,0,0,0.06)",
-            borderRadius: 999,
-            padding: "9px 18px",
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#191918",
-            letterSpacing: "-0.005em",
-          }}
-        >
-          Lead added
+    <div ref={canvasRef} style={{
+      flex: 1, height: "100%", overflowY: "auto", overflowX: "hidden",
+      background: "#FDF7EF", position: "relative",
+    }}>
+      {loading && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg style={{ animation: "spin .6s linear infinite" }} viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="#DF849D" strokeWidth="2">
+            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+          </svg>
         </div>
       )}
 
-      {/* Canvas */}
-      <div
-        ref={canvasRef}
-        className="reddit-canvas"
-        data-tour="feed"
-        style={
-          {
-            flex: 1,
-            position: "relative",
-            background: "#FDF7EF",
-            overflowY: "auto",
-            overflowX: "hidden",
-            scrollbarWidth: "none",
-            msOverflowStyle: "none",
-          } as React.CSSProperties
-        }
-      >
-        {/* AI Mode Toggle — inside canvas, top-center */}
-        <div style={{ position: "absolute", top: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", alignItems: "center", gap: "4px", zIndex: 25 }}>
-          <button
-            onClick={() => { console.log("[AI] switched to normal mode"); setFeedMode("normal"); }}
-            style={{
-              padding: "3px 12px",
-              borderRadius: "20px",
-              border: "1px solid",
-              borderColor: feedMode === "normal" ? "#DF849D" : "rgba(0,0,0,0.1)",
-              background: feedMode === "normal" ? "#DF849D" : "transparent",
-              color: feedMode === "normal" ? "#fff" : "#B2A28C",
-              fontSize: "11px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Normal
-          </button>
-          <button
-            onClick={() => { console.log("[AI] switched to AI mode"); setFeedMode("ai"); }}
-            style={{
-              padding: "3px 12px",
-              borderRadius: "20px",
-              border: "1px solid",
-              borderColor: feedMode === "ai" ? "#DF849D" : "rgba(0,0,0,0.1)",
-              background: feedMode === "ai" ? "#DF849D" : "transparent",
-              color: feedMode === "ai" ? "#fff" : "#B2A28C",
-              fontSize: "11px",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            AI
-          </button>
+      {!loading && posts.length === 0 && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+          <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
+            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+          </svg>
+          <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F", margin: 0 }}>No posts yet</p>
+          <p style={{ fontSize: "12px", color: "#B2A28C", margin: 0, textAlign: "center", maxWidth: "220px" }}>
+            Posts matching your setup will appear here every 15 minutes.
+          </p>
         </div>
-        {settings !== undefined && settings?.tourCompleted !== true ? null
-        : loading && displayPosts.length === 0 && feedMode === "normal" ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
-            <svg style={{ animation: "spin .5s linear infinite" }} viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="#DF849D" strokeWidth="2">
-              <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-            </svg>
-            <p style={{ fontSize: "13px", color: "#B2A28C" }}>Loading results…</p>
-          </div>
-        ) : !loading && displayPosts.length === 0 && feedMode === "normal" ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
-            {!hasKeywords || !hasSubreddits ? (
-              <>
-                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>Setup required</p>
-                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-                  No keywords or subreddits set. Configure them to get started.
-                </p>
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-                </svg>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>No posts found</p>
-                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-                  No matching posts found. Check back soon.
-                </p>
-              </>
-            )}
-          </div>
-        ) : feedMode === "ai" && displayPosts.length === 0 ? (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: "12px" }}>
-            {(aiSettings?.intents.filter(Boolean).length ?? 0) === 0 || aiSubreddits.length === 0 ? (
-              <>
-                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-                  <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>Setup required</p>
-                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-                  Set your intents and subreddits to find matching posts.
-                </p>
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="#C4B9AA" strokeWidth="1.5">
-                  <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-                </svg>
-                <p style={{ fontSize: "14px", fontWeight: 600, color: "#62584F" }}>No matches found</p>
-                <p style={{ fontSize: "12px", color: "#B2A28C", textAlign: "center", maxWidth: "220px" }}>
-                  Try different intents or broaden your subreddits.
-                </p>
-              </>
-            )}
-          </div>
-        ) : (
-          <div key={feedMode} ref={innerRef} style={{ position: "relative", width: "100%" }} />
-        )}
+      )}
+
+      <div style={{ position: "relative", width: "100%", minHeight: "100%" }}>
+        <div ref={(el) => { innerRef.current = el; }} style={{ position: "relative", width: "100%" }} />
       </div>
-
-      {/* Overlay — closes modal on outside click, sits below toolkit/modal */}
-      {activeModal && (
-        <div
-          style={{ position: "absolute", inset: 0, zIndex: 15 }}
-          onClick={() => setActiveModal(null)}
-        />
-      )}
-
-      {/* Feed Toolkit */}
-      {feedMode === "normal" && (
-      <div
-        data-tour="toolbar"
-        style={{
-          position: "absolute",
-          right: "12px",
-          top: "50%",
-          transform: "translateY(-50%)",
-          display: "flex",
-          flexDirection: "column",
-          gap: "4px",
-          zIndex: 20,
-          background: "#fff",
-          borderRadius: "12px",
-          padding: "5px",
-          border: "1px solid rgba(0,0,0,0.07)",
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Keywords */}
-        <ToolkitBtn
-          tip="Keywords"
-          active={activeModal === "keywords"}
-          onClick={() =>
-            setActiveModal((m) => (m === "keywords" ? null : "keywords"))
-          }
-        >
-          <svg
-            viewBox="0 0 20 20"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="9" cy="9" r="6" />
-            <line x1="13.5" y1="13.5" x2="17" y2="17" />
-          </svg>
-        </ToolkitBtn>
-
-        {/* Subreddits */}
-        <ToolkitBtn
-          tip="Subreddits"
-          active={activeModal === "subreddit"}
-          onClick={() =>
-            setActiveModal((m) => (m === "subreddit" ? null : "subreddit"))
-          }
-        >
-          <svg
-            viewBox="0 0 20 20"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="10" cy="10" r="7" />
-            <line x1="3" y1="10" x2="17" y2="10" />
-            <path d="M10 3 Q13 7 13 10 Q13 13 10 17 Q7 13 7 10 Q7 7 10 3Z" />
-          </svg>
-        </ToolkitBtn>
-
-        {/* Metrics */}
-        <ToolkitBtn
-          tip="Metrics"
-          active={activeModal === "metrics"}
-          onClick={() =>
-            setActiveModal((m) => (m === "metrics" ? null : "metrics"))
-          }
-        >
-          <svg
-            viewBox="0 0 20 20"
-            width="16"
-            height="16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="3" y="12" width="3" height="5" rx="1" />
-            <rect x="8.5" y="7" width="3" height="10" rx="1" />
-            <rect x="14" y="4" width="3" height="13" rx="1" />
-          </svg>
-        </ToolkitBtn>
-      </div>
-      )}
-
-      {/* AI Toolbar */}
-      {feedMode === "ai" && (
-        <div
-          style={{
-            position: "absolute",
-            right: "12px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            display: "flex",
-            flexDirection: "column",
-            gap: "4px",
-            zIndex: 20,
-            background: "#fff",
-            borderRadius: "12px",
-            padding: "5px",
-            border: "1px solid rgba(0,0,0,0.07)",
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <ToolkitBtn
-            tip="Intent"
-            active={activeModal === "ai-intent"}
-            onClick={() => setActiveModal((m) => (m === "ai-intent" ? null : "ai-intent"))}
-          >
-            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M10 2l1.5 4.5L16 8l-4.5 1.5L10 14l-1.5-4.5L4 8l4.5-1.5z"/>
-              <path d="M16 14l.75 2.25L19 17l-2.25.75L16 20l-.75-2.25L13 17l2.25-.75z"/>
-            </svg>
-          </ToolkitBtn>
-          <ToolkitBtn
-            tip="Subreddits"
-            active={activeModal === "ai-subreddit"}
-            onClick={() => setActiveModal((m) => (m === "ai-subreddit" ? null : "ai-subreddit"))}
-          >
-            <svg viewBox="0 0 20 20" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="10" cy="10" r="7"/>
-              <line x1="3" y1="10" x2="17" y2="10"/>
-              <path d="M10 3 Q13 7 13 10 Q13 13 10 17 Q7 13 7 10 Q7 7 10 3Z"/>
-            </svg>
-          </ToolkitBtn>
-        </div>
-      )}
-
-      {/* Keywords modal */}
-      {activeModal === "keywords" && (
-        <FeedModal title="Reddit Keywords" onClose={() => setActiveModal(null)}>
-          <div style={{ marginBottom: "11px" }}>
-            <label
-              style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "#62584F",
-                marginBottom: "6px",
-                display: "block",
-              }}
-            >
-              Track
-            </label>
-            {/* Group chips */}
-            <div
-              style={{
-                display: "flex",
-                gap: "5px",
-                flexWrap: "wrap",
-                alignItems: "center",
-                marginBottom: "8px",
-              }}
-            >
-              {keywordGroups.map((g, i) =>
-                editingGroupIdx === i ? (
-                  <input
-                    key={`edit-${i}`}
-                    autoFocus
-                    value={editingGroupName}
-                    onChange={(e) => setEditingGroupName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        const name = editingGroupName.trim() || g.name;
-                        const next = keywordGroups.map((gr, j) =>
-                          j === i ? { ...gr, name } : gr
-                        );
-                        setKeywordGroups(next);
-                        setEditingGroupIdx(null);
-                        saveSettings({ keywordGroups: next });
-                      }
-                      if (e.key === "Escape") setEditingGroupIdx(null);
-                    }}
-                    onBlur={() => {
-                      const name = editingGroupName.trim() || g.name;
-                      const next = keywordGroups.map((gr, j) =>
-                        j === i ? { ...gr, name } : gr
-                      );
-                      setKeywordGroups(next);
-                      setEditingGroupIdx(null);
-                      saveSettings({ keywordGroups: next });
-                    }}
-                    style={{
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      width: "80px",
-                      padding: "2px 8px",
-                      borderRadius: "9999px",
-                      border: "1px solid #DF849D",
-                      background: "#fff",
-                      color: "#191918",
-                      outline: "none",
-                      fontFamily: "inherit",
-                    }}
-                  />
-                ) : (
-                  <span
-                    key={`group-${i}`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: "3px",
-                      padding: "3px 8px 3px 10px",
-                      borderRadius: "9999px",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      background: activeGroupIdx === i ? "#DF849D" : "#F0EFED",
-                      color: activeGroupIdx === i ? "#fff" : "#62584F",
-                      cursor: "pointer",
-                      userSelect: "none",
-                    }}
-                    onClick={() => { setActiveGroupIdx(i); saveSettings({ activeGroupIdx: i }); }}
-                    onDoubleClick={() => {
-                      setEditingGroupIdx(i);
-                      setEditingGroupName(g.name);
-                    }}
-                  >
-                    {g.name}
-                    {keywordGroups.length > 1 && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const next = keywordGroups.filter((_, j) => j !== i);
-                          const newActive =
-                            activeGroupIdx === i
-                              ? Math.max(0, i - 1)
-                              : activeGroupIdx > i
-                                ? activeGroupIdx - 1
-                                : activeGroupIdx;
-                          setKeywordGroups(next);
-                          setActiveGroupIdx(newActive);
-                          saveSettings({ keywordGroups: next, activeGroupIdx: newActive });
-                        }}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          cursor: "pointer",
-                          padding: 0,
-                          lineHeight: 1,
-                          opacity: 0.5,
-                          display: "flex",
-                          alignItems: "center",
-                          color: "inherit",
-                          marginLeft: "1px",
-                        }}
-                      >
-                        <svg
-                          viewBox="0 0 10 10"
-                          width="7"
-                          height="7"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2.2"
-                          strokeLinecap="round"
-                        >
-                          <path d="M2 2l6 6M8 2L2 8" />
-                        </svg>
-                      </button>
-                    )}
-                  </span>
-                )
-              )}
-              <button
-                onClick={() => {
-                  const newName = `Group ${keywordGroups.length + 1}`;
-                  const next = [...keywordGroups, { name: newName, keywords: [] }];
-                  const newIdx = next.length - 1;
-                  setKeywordGroups(next);
-                  setActiveGroupIdx(newIdx);
-                  setEditingGroupIdx(newIdx);
-                  setEditingGroupName(newName);
-                }}
-                style={{
-                  width: "22px",
-                  height: "22px",
-                  borderRadius: "9999px",
-                  border: "1px dashed #C4B9AA",
-                  background: "none",
-                  cursor: "pointer",
-                  fontSize: "14px",
-                  color: "#B2A28C",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  padding: 0,
-                  fontFamily: "inherit",
-                  lineHeight: 1,
-                }}
-              >
-                +
-              </button>
-            </div>
-            <TagBox
-              pills={keywordGroups[activeGroupIdx]?.keywords ?? []}
-              onAdd={(v) => {
-                if (!keywords.includes(v) && keywords.length < 50) {
-                  const next = keywordGroups.map((g, i) =>
-                    i === activeGroupIdx
-                      ? { ...g, keywords: [...g.keywords, v] }
-                      : g
-                  );
-                  setKeywordGroups(next);
-                  saveSettings({ keywordGroups: next });
-                }
-              }}
-              onRemove={(idx) => {
-                const next = keywordGroups.map((g, i) =>
-                  i === activeGroupIdx
-                    ? { ...g, keywords: g.keywords.filter((_, j) => j !== idx) }
-                    : g
-                );
-                setKeywordGroups(next);
-                saveSettings({ keywordGroups: next });
-              }}
-              placeholder="e.g. b2b saas…"
-            />
-            <span
-              style={{
-                fontSize: "9px",
-                color: "#B2A28C",
-                marginTop: "2px",
-                display: "block",
-              }}
-            >
-              {keywords.length}/50 · Press Enter to add
-            </span>
-          </div>
-          <div>
-            <label
-              style={{
-                fontSize: "10px",
-                fontWeight: 600,
-                color: "#62584F",
-                marginBottom: "5px",
-                display: "block",
-              }}
-            >
-              Exclude
-            </label>
-            <TagBox
-              pills={excluded}
-              onAdd={(v) => {
-                if (!excluded.includes(v)) {
-                  const next = [...excluded, v];
-                  setExcluded(next);
-                  saveSettings({ excluded: next });
-                }
-              }}
-              onRemove={(i) => {
-                const next = excluded.filter((_, j) => j !== i);
-                setExcluded(next);
-                saveSettings({ excluded: next });
-              }}
-              placeholder="e.g. spam…"
-              pillColor="#E2DDD8"
-              pillTextColor="#6B6560"
-            />
-          </div>
-        </FeedModal>
-      )}
-
-      {/* Subreddit modal */}
-      {activeModal === "subreddit" && (
-        <FeedModal title="Subreddits" onClose={() => setActiveModal(null)}>
-          <SubredditInput
-            value={subInput}
-            onChange={setSubInput}
-            onAdd={(v) => {
-              const clean = v.trim().replace(/^r\//i, "");
-              if (
-                clean &&
-                !subreddits.includes(clean) &&
-                subreddits.length < 5
-              ) {
-                const next = [...subreddits, clean];
-                setSubreddits(next);
-                setSubInput("");
-                saveSettings({ subreddits: next });
-              }
-            }}
-          />
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "6px",
-              marginTop: "8px",
-            }}
-          >
-            {subreddits.map((s, i) => (
-              <Pill
-                key={s}
-                label={s}
-                onRemove={() => {
-                  const next = subreddits.filter((_, j) => j !== i);
-                  setSubreddits(next);
-                  saveSettings({ subreddits: next });
-                }}
-              />
-            ))}
-          </div>
-          <span style={{ fontSize: "9px", color: "#B2A28C", marginTop: "6px", display: "block" }}>
-            {subreddits.length}/5 · Max 5 subreddits
-          </span>
-        </FeedModal>
-      )}
-
-      {/* AI Intent modal */}
-      {activeModal === "ai-intent" && (
-        <FeedModal title="AI Intent" onClose={() => setActiveModal(null)}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <p style={{ fontSize: "11px", color: "#B2A28C", margin: 0 }}>Describe what you're looking for. Up to 3 intents, 60 chars each.</p>
-            {aiIntents.map((intent, idx) => {
-              const normalizedIntent = intent.trim().replace(/\s+/g, " ").toLowerCase();
-              const mapping = intentListMapLocal.find((e) => e.intent === normalizedIntent);
-              const hasMapping = !!mapping && !!intent.trim();
-              const targetListName = hasMapping
-                ? (leadLists ?? []).find((l) => l._id === mapping!.listId)?.name
-                : null;
-              return (
-                <div key={idx} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <button
-                    title={targetListName ? `→ ${targetListName}` : "Save to list"}
-                    onClick={(e) => { e.stopPropagation(); setIntentPickerIdx(idx); }}
-                    style={{
-                      width: 22, height: 22, flexShrink: 0, border: "none", padding: 0,
-                      borderRadius: 6, cursor: "pointer", display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                      background: "transparent",
-                      color: hasMapping ? "#DF849D" : "#C4B9AA",
-                      transition: "all .15s",
-                    }}
-                  >
-                    <svg viewBox="0 0 20 20" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 8l2-5h10l2 5"/>
-                      <rect x="2" y="8" width="16" height="9" rx="1.5"/>
-                    </svg>
-                  </button>
-                  <input
-                    value={intent}
-                    maxLength={60}
-                    placeholder={`Intent ${idx + 1}…`}
-                    onChange={(e) => {
-                      const next = [...aiIntents];
-                      next[idx] = e.target.value;
-                      setAiIntents(next);
-                    }}
-                    onBlur={() => saveAiSettings(aiIntents, aiSubreddits)}
-                    style={{
-                      flex: 1,
-                      padding: "7px 10px",
-                      borderRadius: "8px",
-                      border: "1px solid rgba(0,0,0,0.1)",
-                      fontSize: "12px",
-                      color: "#191918",
-                      background: "#FAFAF8",
-                      outline: "none",
-                      boxSizing: "border-box" as const,
-                      fontFamily: "inherit",
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        </FeedModal>
-      )}
-
-      {/* AI Subreddit modal */}
-      {activeModal === "ai-subreddit" && (
-        <FeedModal title="AI Subreddits" onClose={() => setActiveModal(null)}>
-          <SubredditInput
-            value={aiSubInput}
-            onChange={setAiSubInput}
-            onAdd={(v) => {
-              const clean = v.trim().replace(/^r\//i, "");
-              if (clean && !aiSubreddits.includes(clean) && aiSubreddits.length < 5) {
-                const next = [...aiSubreddits, clean];
-                setAiSubreddits(next);
-                setAiSubInput("");
-                saveAiSettings(aiIntents, next);
-              }
-            }}
-          />
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginTop: "8px" }}>
-            {aiSubreddits.map((s, i) => (
-              <Pill
-                key={s}
-                label={s}
-                onRemove={() => {
-                  const next = aiSubreddits.filter((_, j) => j !== i);
-                  setAiSubreddits(next);
-                  saveAiSettings(aiIntents, next);
-                }}
-              />
-            ))}
-          </div>
-          <span style={{ fontSize: "9px", color: "#B2A28C", marginTop: "6px", display: "block" }}>
-            {aiSubreddits.length}/5 · Max 5 subreddits
-          </span>
-        </FeedModal>
-      )}
-
-      {/* Metrics modal */}
-      {activeModal === "metrics" && (
-        <FeedModal title="Reddit Metrics" onClose={() => setActiveModal(null)}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", padding: "4px 0" }}>
-            <Stepper
-              value={minUpvotes}
-              label="Min Upvotes"
-              onChange={(v) => { setMinUpvotes(v); saveSettings({ minUpvotes: v }); }}
-            />
-            <Stepper
-              value={minComments}
-              label="Min Comments"
-              onChange={(v) => { setMinComments(v); saveSettings({ minComments: v }); }}
-            />
-            <Stepper
-              value={minKarma}
-              label="Min Karma"
-              step={100}
-              onChange={(v) => { setMinKarma(v); saveSettings({ minKarma: v }); }}
-            />
-          </div>
-        </FeedModal>
-      )}
-
-      {/* Normal-mode multi-list picker */}
-      {listPickerPost && (
-        <ListSelectorModal
-          lists={leadLists ?? []}
-          onSelect={async (listId) => {
-            const p = listPickerPost;
-            setListPickerPost(null);
-            await addLeadMutation({
-              listId,
-              postId:      p.postId,
-              source:      "normal",
-              title:       p.title ?? p.body.slice(0, 200),
-              url:         p.url,
-              subreddit:   p.subreddit,
-              author:      p.author,
-              ups:         p.ups,
-              numComments: p.numComments,
-              createdUtc:  p.createdUtc,
-              query:       (p.matchedKeywords ?? []).join(", "),
-            });
-            setToastKey((k) => k + 1);
-          }}
-          onClose={() => setListPickerPost(null)}
-        />
-      )}
-
-      {/* AI mode — per-intent list picker */}
-      {intentPickerIdx !== null && (() => {
-        const idx = intentPickerIdx;
-        const intentText = aiIntents[idx] ?? "";
-        const normalizedIntent = intentText.trim().replace(/\s+/g, " ").toLowerCase();
-        const currentMapping = intentListMapLocal.find((e) => e.intent === normalizedIntent);
-        return (
-          <ListSelectorModal
-            lists={leadLists ?? []}
-            activeListId={currentMapping?.listId ?? null}
-            onSelect={async (listId) => {
-              setIntentPickerIdx(null);
-              if (!intentText.trim()) return;
-              const next = intentListMapLocal.filter((e) => e.intent !== normalizedIntent);
-              next.push({ intent: normalizedIntent, listId: listId as string });
-              setIntentListMapLocal(next);
-              await setIntentListMapMutation({ entries: next });
-              // Immediately save any currently-matched posts for this intent.
-              const matched = (aiSettings?.matchedPosts ?? []).filter(
-                (m) => m.intent === normalizedIntent && !savedPostIds.has(m.postId),
-              );
-              for (const m of matched) {
-                const post = (aiCandidatePosts ?? []).find((p) => p.postId === m.postId);
-                if (!post) continue;
-                try {
-                  await addLeadMutation({
-                    listId,
-                    postId:      post.postId,
-                    source:      "ai",
-                    title:       post.title ?? post.body.slice(0, 200),
-                    url:         post.url,
-                    subreddit:   post.subreddit,
-                    author:      post.author,
-                    ups:         post.ups,
-                    numComments: post.numComments,
-                    createdUtc:  post.createdUtc,
-                    query:       normalizedIntent,
-                  });
-                } catch {}
-              }
-              if (matched.length > 0) setToastKey((k) => k + 1);
-            }}
-            onClose={() => setIntentPickerIdx(null)}
-          />
-        );
-      })()}
     </div>
-  );
-}
-
-function ToolkitBtn({
-  tip,
-  active,
-  onClick,
-  children,
-}: {
-  tip: string;
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: "30px",
-        height: "30px",
-        border: "none",
-        background: active ? "#DF849D" : "transparent",
-        borderRadius: "7px",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: active ? "#fff" : "#B2A28C",
-        transition: "all 0.15s",
-        padding: 0,
-      }}
-      onMouseEnter={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = "#F0EFED";
-          (e.currentTarget as HTMLElement).style.color = "#191918";
-        }
-      }}
-      onMouseLeave={(e) => {
-        if (!active) {
-          (e.currentTarget as HTMLElement).style.background = "transparent";
-          (e.currentTarget as HTMLElement).style.color = "#B2A28C";
-        }
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function ListSelectorModal({
-  lists,
-  activeListId,
-  onSelect,
-  onClose,
-}: {
-  lists: Array<{ _id: Id<"leadLists">; name: string; count?: number }>;
-  activeListId?: string | null;
-  onSelect: (listId: Id<"leadLists">) => void;
-  onClose: () => void;
-}) {
-  if (typeof document === "undefined") return null;
-  return createPortal(
-    <>
-      <div
-        onClick={onClose}
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(25, 25, 24, 0.32)",
-          zIndex: 200,
-        }}
-      />
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          zIndex: 201,
-          width: "min(280px, calc(100vw - 48px))",
-          background: "#fff",
-          border: "1px solid rgba(0,0,0,0.07)",
-          borderRadius: 14,
-          padding: "14px 10px 10px",
-        }}
-      >
-        <div style={{
-          fontSize: 9,
-          fontWeight: 800,
-          letterSpacing: "0.16em",
-          textTransform: "uppercase",
-          color: "#B2A28C",
-          padding: "0 8px 10px",
-        }}>
-          Save to list
-        </div>
-        {lists.length === 0 ? (
-          <div style={{ padding: "12px 8px", fontSize: 12, color: "#B2A28C", textAlign: "center" }}>
-            No lists yet. Create one in the Leads tab.
-          </div>
-        ) : lists.map((l) => {
-          const isActive = l._id === activeListId;
-          return (
-            <div
-              key={l._id}
-              onClick={() => onSelect(l._id)}
-              style={{
-                padding: "9px 12px",
-                borderRadius: 8,
-                cursor: "pointer",
-                fontSize: 13,
-                fontWeight: isActive ? 600 : 500,
-                color: isActive ? "#DF849D" : "#191918",
-                background: isActive ? "rgba(223,132,157,0.08)" : "transparent",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-              }}
-              onMouseEnter={(e) => { if (!isActive) (e.currentTarget as HTMLElement).style.background = "#FDF7EF"; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = isActive ? "rgba(223,132,157,0.08)" : "transparent"; }}
-            >
-              <span>{l.name}</span>
-              {l.count !== undefined && (
-                <span style={{ fontSize: 11, color: "#B2A28C", fontVariantNumeric: "tabular-nums" }}>{l.count}</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </>,
-    document.body,
   );
 }
