@@ -2,23 +2,22 @@ import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
 import { getAuthUserId } from "@convex-dev/auth/server";
 
-const TWENTY_FOUR_HOURS_SEC = 24 * 3600;
-const TWENTY_FOUR_HOURS_MS  = 24 * 3600 * 1000;
+const TWENTY_FOUR_HOURS_MS = 24 * 3600 * 1000;
 
 export const getFeedPosts = query({
   args: {},
   handler: async (ctx) => {
     const userId = await getAuthUserId(ctx);
     if (!userId) return [];
-    const cutoffSec = Date.now() / 1000 - TWENTY_FOUR_HOURS_SEC;
+    const cutoffMs = Date.now() - TWENTY_FOUR_HOURS_MS;
     const posts = await ctx.db
       .query("feedPosts")
-      .withIndex("by_user_fetched", (q) => q.eq("userId", userId))
-      .collect();
-    return posts
-      .filter((p) => p.createdUtc >= cutoffSec)
-      .sort((a, b) => b.createdUtc - a.createdUtc)
-      .slice(0, 50);
+      .withIndex("by_user_fetched", (q) =>
+        q.eq("userId", userId).gte("fetchedAt", cutoffMs)
+      )
+      .order("desc")
+      .take(50);
+    return posts.sort((a, b) => b.createdUtc - a.createdUtc);
   },
 });
 
@@ -63,11 +62,13 @@ export const deleteExpiredFeedPosts = internalMutation({
   args: { userId: v.id("users") },
   handler: async (ctx, { userId }) => {
     const cutoff = Date.now() - TWENTY_FOUR_HOURS_MS;
+    // Batch up to 100 at a time to stay within Convex transaction limits
     const old = await ctx.db
       .query("feedPosts")
-      .withIndex("by_user_fetched", (q) => q.eq("userId", userId))
-      .filter((q) => q.lt(q.field("fetchedAt"), cutoff))
-      .collect();
+      .withIndex("by_user_fetched", (q) =>
+        q.eq("userId", userId).lt("fetchedAt", cutoff)
+      )
+      .take(100);
     await Promise.all(old.map((p) => ctx.db.delete(p._id)));
   },
 });
