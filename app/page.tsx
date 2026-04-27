@@ -18,17 +18,12 @@ export default function Home() {
       fontFamily: "Inter, -apple-system, sans-serif",
     }}>
       <div style={{ textAlign: "center", maxWidth: 480 }}>
-        {/* Wordmark */}
-        <p style={{
-          fontSize: 13,
-          fontWeight: 700,
-          letterSpacing: "0.18em",
-          textTransform: "uppercase",
-          color: "#B2A28C",
-          marginBottom: 32,
-        }}>
-          AgentK
-        </p>
+        {/* Logo */}
+        <img
+          src="/logo.png"
+          alt="AgentK"
+          style={{ width: 56, height: 56, marginBottom: 32, borderRadius: 12 }}
+        />
 
         {/* Main message */}
         <h1 style={{
@@ -49,32 +44,11 @@ export default function Home() {
           lineHeight: 1.65,
           margin: "0 0 48px",
         }}>
-          We&apos;re rethinking things — a small pivot, a better product.
+          We&apos;re rethinking things. A small pivot, a better product.
           <br />
           Back soon.
         </p>
 
-        {/* Divider */}
-        <div style={{
-          width: 40,
-          height: 1,
-          background: "#E8DDD3",
-          margin: "0 auto 48px",
-        }} />
-
-        {/* Dashboard link for existing users */}
-        <a
-          href="/dashboard"
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            color: "#B2A28C",
-            textDecoration: "none",
-            letterSpacing: "0.02em",
-          }}
-        >
-          Existing user? Go to dashboard →
-        </a>
       </div>
     </div>
   );
