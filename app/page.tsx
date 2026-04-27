@@ -22,7 +22,7 @@ export default function Home() {
         <img
           src="/logo.png"
           alt="AgentK"
-          style={{ width: 56, height: 56, marginBottom: 32, borderRadius: 12 }}
+          style={{ width: 56, height: 56, marginBottom: 32, borderRadius: 12, display: "block", margin: "0 auto 32px" }}
         />
 
         {/* Main message */}
