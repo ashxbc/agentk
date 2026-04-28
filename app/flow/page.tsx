@@ -397,7 +397,7 @@ function Step2({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
                   borderRadius: 999,
                   border: `1.5px solid ${stage === s ? C.pink : C.border}`,
                   background: C.white,
-                  color: stage === s ? C.pink : C.subtle,
+                  color: stage === s ? C.dark : C.subtle,
                   fontSize: 13,
                   fontWeight: 600,
                   fontFamily: "inherit",
@@ -457,7 +457,7 @@ function PlatformCard({
         </p>
       </div>
 
-      {connected && !analyzing && <div style={{ color: C.pink, flexShrink: 0 }}><Check /></div>}
+      {connected && !analyzing && <div style={{ color: C.dark, flexShrink: 0 }}><Check /></div>}
       {connected && analyzing  && <div style={{ flexShrink: 0 }}><Spinner /></div>}
     </button>
   );
@@ -509,7 +509,7 @@ function Step3({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
             border: `1.5px solid ${C.pink}`,
             animation: "agentk-stepIn 0.4s ease both",
           }}>
-            <p style={{ fontSize: 15, fontWeight: 600, color: C.pink, margin: 0 }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: C.dark, margin: 0 }}>
               We&apos;ve learned how you write. You&apos;re set.
             </p>
           </div>
@@ -697,7 +697,7 @@ function Step5({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
                 padding: "14px 18px", borderRadius: 10,
                 background: C.white, border: `1.5px solid ${C.pink}`,
               }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: C.pink, margin: 0 }}>Voice calibrated. Ready to continue.</p>
+                <p style={{ fontSize: 14, fontWeight: 600, color: C.dark, margin: 0 }}>Voice calibrated. Ready to continue.</p>
               </div>
             )}
 
@@ -711,7 +711,7 @@ function Step5({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
                       borderRadius: 999,
                       border: `1.5px solid ${tags.includes(t) ? C.pink : C.border}`,
                       background: C.white,
-                      color: tags.includes(t) ? C.pink : C.subtle,
+                      color: tags.includes(t) ? C.dark : C.subtle,
                       fontSize: 13,
                       fontWeight: 600,
                       fontFamily: "inherit",
@@ -767,9 +767,9 @@ function Step6() {
         background: C.pinkLight,
         border: `2px solid ${C.pinkBorder}`,
         display: "flex", alignItems: "center", justifyContent: "center",
-        marginBottom: 32, color: C.pink,
+        marginBottom: 32, color: C.dark,
       }}>
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.pink} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke={C.dark} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
