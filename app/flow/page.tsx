@@ -764,7 +764,7 @@ function Step6() {
     }}>
       <div style={{
         width: 64, height: 64, borderRadius: "50%",
-        background: C.pinkLight,
+        background: C.cream,
         border: `2px solid ${C.pinkBorder}`,
         display: "flex", alignItems: "center", justifyContent: "center",
         marginBottom: 32, color: C.dark,
