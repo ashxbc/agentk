@@ -141,13 +141,17 @@ function XLogo({ size = 22 }: { size?: number }) {
   );
 }
 
-// Real Reddit logo (alien)
+// Real Reddit logo from Reddit's CDN
 function RedditLogo({ size = 26 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="10" cy="10" r="10" fill="#FF4500"/>
-      <path d="M16.67 10a1.46 1.46 0 00-2.47-1 7.12 7.12 0 00-3.85-1.23l.65-3.07 2.13.45a1 1 0 101.07-1 1 1 0 00-.96.68l-2.38-.5a.22.22 0 00-.26.16l-.73 3.44a7.14 7.14 0 00-3.89 1.23 1.46 1.46 0 10-1.61 2.39 2.87 2.87 0 000 .44c0 2.24 2.61 4.06 5.83 4.06s5.83-1.82 5.83-4.06a2.87 2.87 0 000-.44 1.46 1.46 0 00.55-1.55zM8 11a1 1 0 111 1 1 1 0 01-1-1zm5.37 2.71a3.39 3.39 0 01-2.37.63 3.39 3.39 0 01-2.37-.63.22.22 0 01.31-.31 2.93 2.93 0 002.06.47 2.93 2.93 0 002.06-.47.22.22 0 01.31.31zM13 12a1 1 0 111-1 1 1 0 01-1 1z" fill="white"/>
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src="https://www.redditstatic.com/desktop2x/img/snoo_discovery@1x.png"
+      width={size}
+      height={size}
+      alt="Reddit"
+      style={{ objectFit: "contain", display: "block" }}
+    />
   );
 }
 
@@ -215,12 +219,12 @@ function Shell({
                 onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
                 onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
               >
-                {ctaLabel} <ArrowRight />
+                {ctaLabel}
               </button>
             )}
             {onBack && (
               <button style={btnGhost} onClick={onBack}>
-                <ArrowLeft /> Back
+                Back
               </button>
             )}
           </div>
@@ -392,7 +396,7 @@ function Step2({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
                   padding: "9px 18px",
                   borderRadius: 999,
                   border: `1.5px solid ${stage === s ? C.pink : C.border}`,
-                  background: stage === s ? C.pinkLight : C.white,
+                  background: C.white,
                   color: stage === s ? C.pink : C.subtle,
                   fontSize: 13,
                   fontWeight: 600,
@@ -433,7 +437,7 @@ function PlatformCard({
         padding: "20px 24px",
         borderRadius: 14,
         border: `1.5px solid ${connected ? C.pink : C.border}`,
-        background: connected ? C.pinkLight : C.white,
+        background: C.white,
         cursor: connected ? "default" : "pointer",
         width: "100%",
         transition: "all 0.2s",
@@ -501,8 +505,8 @@ function Step3({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
             marginTop: 8,
             padding: "16px 20px",
             borderRadius: 12,
-            background: C.pinkLight,
-            border: `1px solid ${C.pinkBorder}`,
+            background: C.white,
+            border: `1.5px solid ${C.pink}`,
             animation: "agentk-stepIn 0.4s ease both",
           }}>
             <p style={{ fontSize: 15, fontWeight: 600, color: C.pink, margin: 0 }}>
@@ -666,7 +670,7 @@ function Step5({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
               border: `1.5px solid ${C.border}`,
               marginBottom: 20,
             }}>
-              <p style={{ fontSize: 11, fontWeight: 600, color: C.pink, margin: "0 0 10px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              <p style={{ fontSize: 11, fontWeight: 600, color: C.dark, margin: "0 0 10px", letterSpacing: "0.08em", textTransform: "uppercase" }}>
                 Draft reply {iteration > 1 ? `(iteration ${iteration})` : ""}
               </p>
               <p style={{ fontSize: 15, color: C.body, lineHeight: 1.7, margin: 0 }}>{MOCK_REPLY}</p>
@@ -679,7 +683,7 @@ function Step5({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
                   onClick={() => setApproved(true)}
                   onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
                   onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}>
-                  <Check /> This nails it
+                  This nails it
                 </button>
                 <button style={btnGhost} onClick={() => setRejected(true)}>
                   Not quite right
@@ -691,9 +695,8 @@ function Step5({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
               <div style={{
                 display: "flex", alignItems: "center", gap: 10,
                 padding: "14px 18px", borderRadius: 10,
-                background: C.pinkLight, border: `1px solid ${C.pinkBorder}`,
+                background: C.white, border: `1.5px solid ${C.pink}`,
               }}>
-                <div style={{ color: C.pink }}><Check /></div>
                 <p style={{ fontSize: 14, fontWeight: 600, color: C.pink, margin: 0 }}>Voice calibrated. Ready to continue.</p>
               </div>
             )}
@@ -707,7 +710,7 @@ function Step5({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
                       padding: "7px 14px",
                       borderRadius: 999,
                       border: `1.5px solid ${tags.includes(t) ? C.pink : C.border}`,
-                      background: tags.includes(t) ? C.pinkLight : C.white,
+                      background: C.white,
                       color: tags.includes(t) ? C.pink : C.subtle,
                       fontSize: 13,
                       fontWeight: 600,
@@ -789,7 +792,7 @@ function Step6() {
         onMouseDown={e => { (e.currentTarget as HTMLElement).style.transform = "scale(0.97)"; }}
         onMouseUp={e => { (e.currentTarget as HTMLElement).style.transform = "scale(1)"; }}
       >
-        Go to dashboard <ArrowRight />
+        Go to dashboard
       </button>
     </div>
   );
