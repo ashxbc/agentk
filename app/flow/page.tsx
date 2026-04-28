@@ -194,7 +194,7 @@ function Shell({
       fontFamily: "Inter, -apple-system, sans-serif",
       animation: "agentk-stepIn 0.42s cubic-bezier(0.22,1,0.36,1) both",
     }}>
-      <div style={{ width: "100%", maxWidth: 580 }}>
+      <div style={{ width: "100%", maxWidth: 580, background: C.white, borderRadius: 16, padding: "40px 48px" }}>
         <p style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: C.muted, marginBottom: 32 }}>
           {step} / {total}
         </p>
