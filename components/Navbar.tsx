@@ -110,12 +110,20 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <button
-              onClick={() => setAuthOpen(true)}
-              className="bg-on-surface text-surface px-6 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-all active:scale-95 duration-200 ease-in-out"
-            >
-              Login
-            </button>
+            <>
+              <a
+                href="/flow"
+                className="px-6 py-2 rounded-full text-sm font-medium border border-outline-variant/40 text-secondary hover:bg-surface-variant/40 transition-all active:scale-95 duration-200 ease-in-out"
+              >
+                Flow
+              </a>
+              <button
+                onClick={() => setAuthOpen(true)}
+                className="bg-on-surface text-surface px-6 py-2 rounded-full text-sm font-medium hover:opacity-90 transition-all active:scale-95 duration-200 ease-in-out"
+              >
+                Login
+              </button>
+            </>
           )}
         </div>
       </nav>
